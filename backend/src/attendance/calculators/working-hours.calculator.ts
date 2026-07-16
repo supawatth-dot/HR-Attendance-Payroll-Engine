@@ -8,8 +8,8 @@
  * rule engine at runtime – NOTHING is hard-coded here.
  */
 
-import { Injectable, Logger } from '@nestjs/common';
-import { IRuleEngineService } from '../../rules/rule-engine.service';
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { IRuleEngineService, RuleEngineService } from '../../rules/rule-engine.service';
 
 // ---------------------------------------------------------------------------
 // Input / Output types
@@ -54,7 +54,9 @@ export interface WorkingHoursResult {
 export class WorkingHoursCalculator {
   private readonly logger = new Logger(WorkingHoursCalculator.name);
 
-  constructor(private readonly ruleEngine: IRuleEngineService) {}
+  constructor(
+    @Inject(RuleEngineService) private readonly ruleEngine: IRuleEngineService,
+  ) {}
 
   /**
    * Main calculation entry point.

@@ -1,6 +1,16 @@
-import { IsString, IsInt, IsNotEmpty, IsOptional, IsDateString } from 'class-validator';
+import { IsString, IsInt, IsNotEmpty, IsOptional, IsDateString, IsEmail, IsNumber } from 'class-validator';
 
 export class CreateEmployeeDto {
+  // Optional: when omitted the service generates a unique code, so existing
+  // enrollment forms that don't collect one still work.
+  @IsOptional()
+  @IsString()
+  employeeCode?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
   @IsString()
   @IsNotEmpty()
   firstName: string;
@@ -16,6 +26,14 @@ export class CreateEmployeeDto {
   @IsInt()
   @IsNotEmpty()
   shiftId: number;
+
+  @IsOptional()
+  @IsNumber()
+  baseSalary?: number;
+
+  @IsOptional()
+  @IsNumber()
+  dailyRate?: number;
 
   @IsDateString()
   @IsNotEmpty()

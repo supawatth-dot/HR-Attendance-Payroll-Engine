@@ -8,7 +8,7 @@ import { BullModule } from '@nestjs/bullmq';
 @Module({
   imports: [
     BullModule.registerQueue({
-      name: 'attendance-engine-queue',
+      name: 'run-attendance-engine',
     }),
   ],
   controllers: [ImportController],

@@ -7,12 +7,15 @@
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "build": "nest build",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
-    "seed": "ts-node ../prisma/seed.ts"
+    "seed": "ts-node prisma/seed.ts"
   },
   "prisma": {
-    "seed": "ts-node ../prisma/seed.ts"
+    "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^10.1.0",

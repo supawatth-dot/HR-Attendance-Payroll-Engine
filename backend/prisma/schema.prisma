@@ -9,15 +9,22 @@ datasource db {
 
 model Employee {
   id               Int       @id @default(autoincrement())
+  employeeCode     String    @unique
+  email            String?   @unique
   firstName        String
   lastName         String
   departmentId     Int
   shiftId          Int
+  baseSalary       Float     @default(0)
+  dailyRate        Float     @default(0)
+  isActive         Boolean   @default(true)
   hireDate         DateTime
   terminationDate  DateTime?
   department       Department @relation(fields: [departmentId], references: [id])
   shift            Shift      @relation(fields: [shiftId], references: [id])
   attendances      AttendanceResult[]
+  attendanceRaws   AttendanceRaw[]
+  payrollItems     PayrollItem[]
   leaves           Leave[]
 }
 
@@ -61,74 +68,86 @@ model AttendanceRaw {
   employee      Employee @relation(fields: [employeeId], references: [id])
   clockIn       DateTime?
   clockOut      DateTime?
+  date          DateTime
   sourceFile    String?
-  importBatchId Int
-  importBatch   ImportLog @relation(fields: [importBatchId], references: [id])
+  importLogId   Int
+  importLog     ImportLog @relation(fields: [importLogId], references: [id])
 }
 
 model AttendanceResult {
   id               Int      @id @default(autoincrement())
   employeeId       Int
   employee         Employee @relation(fields: [employeeId], references: [id])
-  attendanceDate   DateTime
+  date             DateTime
   workingSeconds   Int
   lateSeconds      Int
   earlyOutSeconds  Int
   otSeconds        Int
-  absent           Boolean
+  isAbsent         Boolean
   missingClock     Boolean
-  ruleVersionId    Int
-  ruleVersion      RuleVersion @relation(fields: [ruleVersionId], references: [id])
-  mealAllowance    MealAllowanceResult?
-  diligence        DiligenceResult?
-}
+  mealAllowance    Float    @default(0)
+  ruleVersionId    Int?
+  ruleVersion      RuleVersion? @relation(fields: [ruleVersionId], references: [id])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-model MealAllowanceResult {
-  id                 Int @id @default(autoincrement())
-  attendanceResultId Int
-  attendanceResult   AttendanceResult @relation(fields: [attendanceResultId], references: [id])
-  amount             Decimal
-  ruleVersionId      Int
-  ruleVersion        RuleVersion @relation(fields: [ruleVersionId], references: [id])
-}
-
-model DiligenceResult {
-  id                 Int @id @default(autoincrement())
-  attendanceResultId Int
-  attendanceResult   AttendanceResult @relation(fields: [attendanceResultId], references: [id])
-  amount             Decimal
-  ruleVersionId      Int
-  ruleVersion        RuleVersion @relation(fields: [ruleVersionId], references: [id])
+  @@unique([employeeId, date])
 }
 
 model PayrollBatch {
   id          Int       @id @default(autoincrement())
   periodStart DateTime
   periodEnd   DateTime
-  createdAt   DateTime @default(now())
   status      String
+  createdById Int?
+  itemCount   Int       @default(0)
+  totalGross  Float     @default(0)
+  totalNet    Float     @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  processedAt DateTime?
   items       PayrollItem[]
+
+  @@unique([periodStart, periodEnd])
 }
 
 model PayrollItem {
-  id            Int @id @default(autoincrement())
-  payrollBatchId Int
-  payrollBatch   PayrollBatch @relation(fields: [payrollBatchId], references: [id])
-  employeeId    Int
-  employee      Employee @relation(fields: [employeeId], references: [id])
-  grossAmount   Decimal
-  deductions    Decimal
-  netAmount     Decimal
-  generatedAt   DateTime @default(now())
+  id                       Int          @id @default(autoincrement())
+  batchId                  Int
+  batch                    PayrollBatch @relation(fields: [batchId], references: [id])
+  employeeId               Int
+  employee                 Employee     @relation(fields: [employeeId], references: [id])
+  baseSalary               Float
+  totalWorkingSeconds      Int          @default(0)
+  totalOtSeconds           Int          @default(0)
+  totalMealAllowance       Float        @default(0)
+  diligenceAmount          Float        @default(0)
+  otPay                    Float        @default(0)
+  grossPay                 Float        @default(0)
+  socialSecurityDeduction  Float        @default(0)
+  incomeTaxDeduction       Float        @default(0)
+  totalDeductions          Float        @default(0)
+  netPay                   Float        @default(0)
+  createdAt                DateTime     @default(now())
+  updatedAt                DateTime     @updatedAt
+
+  @@unique([batchId, employeeId])
 }
 
 model ImportLog {
-  id          Int      @id @default(autoincrement())
-  fileName    String
-  uploadedAt  DateTime @default(now())
-  status      String
-  errorReport String?
-  rawRecords  AttendanceRaw[]
+  id           Int      @id @default(autoincrement())
+  fileName     String
+  fileSize     Int?
+  uploadedById Int?
+  status       String
+  totalRows    Int      @default(0)
+  validRows    Int      @default(0)
+  errorRows    Int      @default(0)
+  errorReport  Json?
+  uploadedAt   DateTime @default(now())
+  processedAt  DateTime?
+  updatedAt    DateTime @updatedAt
+  rawRecords   AttendanceRaw[]
 }
 
 model AuditLog {
@@ -154,6 +173,7 @@ model RuleDefinition {
   categoryId       Int
   category         RuleCategory @relation(fields: [categoryId], references: [id])
   name             String
+  code             String?
   description      String?
   formulaTemplate  String?
   effectiveDate    DateTime
@@ -168,7 +188,10 @@ model RuleVersion {
   versionNumber Int
   effectiveFrom DateTime
   effectiveTo   DateTime?
+  isActive      Boolean @default(true)
+  value         Json?
   values        RuleValue[]
+  attendanceResults AttendanceResult[]
 }
 
 model RuleValue {

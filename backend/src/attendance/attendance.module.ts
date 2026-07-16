@@ -8,12 +8,16 @@ import { DiligenceCalculator } from './calculators/diligence.calculator';
 import { OtCalculator } from './calculators/ot.calculator';
 import { AttendanceWorker } from './workers/attendance.worker';
 import { BullModule } from '@nestjs/bullmq';
+import { HolidaysModule } from '../holidays/holidays.module';
+import { LeavesModule } from '../leaves/leaves.module';
 
 @Module({
   imports: [
     BullModule.registerQueue({
-      name: 'attendance-engine-queue',
+      name: 'run-attendance-engine',
     }),
+    HolidaysModule,
+    LeavesModule,
   ],
   controllers: [AttendanceController],
   providers: [

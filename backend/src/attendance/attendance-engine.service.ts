@@ -17,9 +17,11 @@
  * logic itself (that lives in the individual calculators).
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RuleEngineService } from '../rules/rule-engine.service';
+import { HolidaysService } from '../holidays/holidays.service';
+import { LeavesService } from '../leaves/leaves.service';
 import { WorkingHoursCalculator } from './calculators/working-hours.calculator';
 import { MealAllowanceCalculator } from './calculators/meal-allowance.calculator';
 
@@ -65,8 +67,8 @@ export class AttendanceEngineService {
     private readonly ruleEngine: RuleEngineService,
     private readonly workingHoursCalc: WorkingHoursCalculator,
     private readonly mealAllowanceCalc: MealAllowanceCalculator,
-    private readonly holidaysService: IHolidaysService,
-    private readonly leaveService: ILeaveService,
+    @Inject(HolidaysService) private readonly holidaysService: IHolidaysService,
+    @Inject(LeavesService) private readonly leaveService: ILeaveService,
   ) {}
 
   // -------------------------------------------------------------------------

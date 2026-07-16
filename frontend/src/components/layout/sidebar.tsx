@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
+  BarChart3,
   Users,
   Clock,
   Upload,
@@ -20,6 +21,7 @@ import { clearToken } from '@/lib/auth';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/overview', label: 'Overview', icon: BarChart3 },
   { href: '/employees', label: 'Employees', icon: Users },
   { href: '/attendance', label: 'Attendance', icon: Clock },
   { href: '/import', label: 'Import Data', icon: Upload },

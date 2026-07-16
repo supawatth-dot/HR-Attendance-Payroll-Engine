@@ -62,4 +62,20 @@ export class LeavesService {
   async remove(id: number) {
     return this.prisma.leave.delete({ where: { id } });
   }
+
+  /**
+   * True when the employee has an approved leave covering the given date.
+   * Consumed by the attendance engine to skip days spent on leave.
+   */
+  async isOnLeave(employeeId: number, date: Date): Promise<boolean> {
+    const leave = await this.prisma.leave.findFirst({
+      where: {
+        employeeId,
+        approvedBy: { not: null },
+        startDate: { lte: date },
+        endDate: { gte: date },
+      },
+    });
+    return leave !== null;
+  }
 }

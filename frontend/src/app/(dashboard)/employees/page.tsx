@@ -46,23 +46,22 @@ export default function EmployeesPage() {
       const mockData: Employee[] = Array.from({ length: 10 }, (_, i) => {
         const deptIdx = i % 3
         return {
-          id: `emp-${i + 1}`,
+          id: i + 1,
           employeeCode: `EMP${String(i + 1).padStart(4, '0')}`,
           firstName: firstNames[i],
           lastName: lastNames[i],
           fullName: `${firstNames[i]} ${lastNames[i]}`,
           email: `employee${i + 1}@company.com`,
-          phone: `08${String(i + 1).padStart(8, '0')}`,
-          departmentId: `dept-${deptIdx + 1}`,
+          departmentId: deptIdx + 1,
           department: {
-            id: `dept-${deptIdx + 1}`,
+            id: deptIdx + 1,
             name: deptNames[deptIdx],
             code: deptCodes[deptIdx],
             headCount: 30,
           },
-          shiftId: 'shift-1',
+          shiftId: 1,
           shift: {
-            id: 'shift-1',
+            id: 1,
             name: 'Morning',
             code: 'MOR',
             startTime: '08:00',
