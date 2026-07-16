@@ -7,11 +7,15 @@
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "build": "nest build",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
     "seed": "ts-node ../prisma/seed.ts"
   },
   "prisma": {
+    "schema": "../prisma/schema.prisma",
     "seed": "ts-node ../prisma/seed.ts"
   },
   "dependencies": {
