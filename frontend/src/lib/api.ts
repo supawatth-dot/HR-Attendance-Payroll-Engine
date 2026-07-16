@@ -1,6 +1,6 @@
 import { getToken, clearToken } from './auth';
 
-export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1').replace(/\/$/, '');
+export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || '/api/v1').replace(/\/$/, '');
 
 type RequestOptions = {
   body?: BodyInit | Record<string, any>;
@@ -25,7 +25,11 @@ class ApiError extends Error {
 }
 
 function buildUrl(path: string, params?: Record<string, any>) {
-  const url = new URL(`${API_BASE_URL}${path}`);
+  const baseUrl =
+    API_BASE_URL.startsWith('http') || typeof window === 'undefined'
+      ? API_BASE_URL
+      : `${window.location.origin}${API_BASE_URL}`;
+  const url = new URL(`${baseUrl}${path}`);
 
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
