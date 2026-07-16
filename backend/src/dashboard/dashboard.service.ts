@@ -70,13 +70,25 @@ export class DashboardService {
       where: { terminationDate: null },
     });
 
-    // Leaves overlapping the window.
-    const leaveDays = await this.prisma.leave.count({
+    // Approved leaves overlapping the window. Count actual leave *days* that
+    // fall inside [startDate, endDate] (clamped, inclusive), not rows — a
+    // pending request contributes nothing and a 5-day approved leave counts 5.
+    const approvedLeaves = await this.prisma.leave.findMany({
       where: {
+        approvedBy: { not: null },
         startDate: { lte: endDate },
         endDate: { gte: startDate },
       },
+      select: { startDate: true, endDate: true },
     });
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+    let leaveDays = 0;
+    for (const lv of approvedLeaves) {
+      const from = lv.startDate < startDate ? startDate : lv.startDate;
+      const to = lv.endDate > endDate ? endDate : lv.endDate;
+      const days = Math.floor((to.getTime() - from.getTime()) / MS_PER_DAY) + 1;
+      if (days > 0) leaveDays += days;
+    }
 
     // All attendance results in the window, with department + meal allowance.
     const results = await this.prisma.attendanceResult.findMany({

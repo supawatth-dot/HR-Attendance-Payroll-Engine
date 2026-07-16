@@ -44,9 +44,13 @@ export class EmployeesService {
   }
 
   async create(dto: CreateEmployeeDto, userId: number) {
+    // Generate a unique code when the caller doesn't supply one, so forms that
+    // only collect name/department/shift still enroll successfully.
+    const employeeCode = dto.employeeCode?.trim() || `EMP-${Date.now()}`;
+
     const employee = await this.prisma.employee.create({
       data: {
-        employeeCode: dto.employeeCode,
+        employeeCode,
         email: dto.email ?? null,
         firstName: dto.firstName,
         lastName: dto.lastName,

@@ -1,9 +1,11 @@
 import { IsString, IsInt, IsNotEmpty, IsOptional, IsDateString, IsEmail, IsNumber } from 'class-validator';
 
 export class CreateEmployeeDto {
+  // Optional: when omitted the service generates a unique code, so existing
+  // enrollment forms that don't collect one still work.
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  employeeCode: string;
+  employeeCode?: string;
 
   @IsOptional()
   @IsEmail()
