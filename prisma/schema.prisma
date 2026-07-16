@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Employee {
+  id               Int       @id @default(autoincrement())
+  firstName        String
+  lastName         String
+  departmentId     Int
+  shiftId          Int
+  hireDate         DateTime
+  terminationDate  DateTime?
+  department       Department @relation(fields: [departmentId], references: [id])
+  shift            Shift      @relation(fields: [shiftId], references: [id])
+  attendances      AttendanceResult[]
+  leaves           Leave[]
+}
+
+model Department {
+  id          Int        @id @default(autoincrement())
+  name        String
+  managerId   Int?
+  employees   Employee[]
+}
+
+model Shift {
+  id                Int    @id @default(autoincrement())
+  name              String
+  startTime         String // HH:mm
+  endTime           String // HH:mm
+  lunchBreakMinutes Int
+  overnight         Boolean
+  employees         Employee[]
+}
+
+model Holiday {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @unique
+  description String
+  isPublic    Boolean
+}
+
+model Leave {
+  id          Int      @id @default(autoincrement())
+  employeeId  Int
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  startDate   DateTime
+  endDate     DateTime
+  type        String
+  approvedBy  Int?
+}
+
+model AttendanceRaw {
+  id            Int      @id @default(autoincrement())
+  employeeId    Int
+  employee      Employee @relation(fields: [employeeId], references: [id])
+  clockIn       DateTime?
+  clockOut      DateTime?
+  sourceFile    String?
+  importBatchId Int
+  importBatch   ImportLog @relation(fields: [importBatchId], references: [id])
+}
+
+model AttendanceResult {
+  id               Int      @id @default(autoincrement())
+  employeeId       Int
+  employee         Employee @relation(fields: [employeeId], references: [id])
+  attendanceDate   DateTime
+  workingSeconds   Int
+  lateSeconds      Int
+  earlyOutSeconds  Int
+  otSeconds        Int
+  absent           Boolean
+  missingClock     Boolean
+  ruleVersionId    Int
+  ruleVersion      RuleVersion @relation(fields: [ruleVersionId], references: [id])
+  mealAllowance    MealAllowanceResult?
+  diligence        DiligenceResult?
+}
+
+model MealAllowanceResult {
+  id                 Int @id @default(autoincrement())
+  attendanceResultId Int
+  attendanceResult   AttendanceResult @relation(fields: [attendanceResultId], references: [id])
+  amount             Decimal
+  ruleVersionId      Int
+  ruleVersion        RuleVersion @relation(fields: [ruleVersionId], references: [id])
+}
+
+model DiligenceResult {
+  id                 Int @id @default(autoincrement())
+  attendanceResultId Int
+  attendanceResult   AttendanceResult @relation(fields: [attendanceResultId], references: [id])
+  amount             Decimal
+  ruleVersionId      Int
+  ruleVersion        RuleVersion @relation(fields: [ruleVersionId], references: [id])
+}
+
+model PayrollBatch {
+  id          Int       @id @default(autoincrement())
+  periodStart DateTime
+  periodEnd   DateTime
+  createdAt   DateTime @default(now())
+  status      String
+  items       PayrollItem[]
+}
+
+model PayrollItem {
+  id            Int @id @default(autoincrement())
+  payrollBatchId Int
+  payrollBatch   PayrollBatch @relation(fields: [payrollBatchId], references: [id])
+  employeeId    Int
+  employee      Employee @relation(fields: [employeeId], references: [id])
+  grossAmount   Decimal
+  deductions    Decimal
+  netAmount     Decimal
+  generatedAt   DateTime @default(now())
+}
+
+model ImportLog {
+  id          Int      @id @default(autoincrement())
+  fileName    String
+  uploadedAt  DateTime @default(now())
+  status      String
+  errorReport String?
+  rawRecords  AttendanceRaw[]
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  tableName String
+  recordId  Int
+  operation String
+  changedBy Int
+  oldValue  Json?
+  newValue  Json?
+  reason    String?
+  timestamp DateTime @default(now())
+}
+
+model RuleCategory {
+  id          Int @id @default(autoincrement())
+  name        String @unique
+  definitions RuleDefinition[]
+}
+
+model RuleDefinition {
+  id               Int @id @default(autoincrement())
+  categoryId       Int
+  category         RuleCategory @relation(fields: [categoryId], references: [id])
+  name             String
+  description      String?
+  formulaTemplate  String?
+  effectiveDate    DateTime
+  expiryDate       DateTime?
+  versions         RuleVersion[]
+}
+
+model RuleVersion {
+  id            Int @id @default(autoincrement())
+  definitionId  Int
+  definition    RuleDefinition @relation(fields: [definitionId], references: [id])
+  versionNumber Int
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  values        RuleValue[]
+}
+
+model RuleValue {
+  id            Int @id @default(autoincrement())
+  ruleVersionId Int
+  ruleVersion   RuleVersion @relation(fields: [ruleVersionId], references: [id])
+  key           String
+  value         String
+  valueType     String
+}
+
+model CompanySetting {
+  key   String @id
+  value String
+}

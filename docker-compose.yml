@@ -1,0 +1,98 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────
+#  HR Attendance & Payroll Engine – Compose File
+# ─────────────────────────────────────────────
+
+services:
+  # ── PostgreSQL 16 ────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: hr_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hr_payroll
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hr_payroll"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - hr_network
+
+  # ── Redis 7 ──────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: hr_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - hr_network
+
+  # ── NestJS Backend ────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hr_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/hr_payroll?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      PORT: 3000
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    networks:
+      - hr_network
+
+  # ── Next.js Frontend ──────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api/v1}
+    container_name: hr_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api/v1}
+      PORT: 3001
+      NODE_ENV: production
+    ports:
+      - "3001:3001"
+    networks:
+      - hr_network
+
+# ─── Named Volumes ────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+
+# ─── Networks ─────────────────────────────────
+networks:
+  hr_network:
+    driver: bridge
