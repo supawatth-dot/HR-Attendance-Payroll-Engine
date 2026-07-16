@@ -2,13 +2,15 @@
 
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { Clock, Filter, Play, CheckCircle2, AlertTriangle, Calendar, RefreshCw } from 'lucide-react';
+import { Clock, Play, CheckCircle2, AlertTriangle, Calendar, RefreshCw } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import api from '@/lib/api';
 import { formatCurrency, formatDate, formatDuration } from '@/lib/utils';
+import { getDateLocale, useLocale } from '@/lib/locale';
 
 export default function AttendancePage() {
+  const { locale } = useLocale();
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]);
@@ -17,6 +19,64 @@ export default function AttendancePage() {
   const [filterAbsent, setFilterAbsent] = useState(false);
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const dateLocale = getDateLocale(locale);
+  const copy = locale === 'th'
+    ? {
+        title: 'ผลลัพธ์จาก Attendance Engine',
+        subtitle: 'ตรวจสอบชั่วโมงทำงาน เวลามาสาย ค่าอาหาร (`25 บาท`) และตัวคูณโอทีที่คำนวณแล้ว',
+        recalculate: 'คำนวณช่วงวันที่ที่เลือกใหม่',
+        runSuccess: (start: string, end: string) => `สั่งคำนวณเวลาเข้างานใหม่ตั้งแต่ ${start} ถึง ${end} เรียบร้อยแล้ว`,
+        runError: (detail: string) => `เกิดข้อผิดพลาดของเอนจิน: ${detail}`,
+        start: 'เริ่ม:',
+        end: 'สิ้นสุด:',
+        onlyMissing: 'เฉพาะรายการลงเวลาไม่ครบ',
+        onlyAbsent: 'เฉพาะขาดงาน',
+        date: 'วันที่',
+        employee: 'พนักงาน',
+        status: 'สถานะ',
+        workingHours: 'ชั่วโมงทำงาน',
+        lateMinutes: 'มาสาย (นาที)',
+        overtimeHours: 'OT (ชม.)',
+        mealAllowance: 'ค่าอาหาร',
+        diligenceStatus: 'สถานะเบี้ยขยัน',
+        loading: 'กำลังประมวลผลตามกฎในฐานข้อมูล...',
+        empty: 'ไม่พบบันทึกเวลาเข้างานตามช่วงวันที่และตัวกรองที่เลือก',
+        absent: 'ขาดงาน',
+        missingClock: 'ลงเวลาไม่ครบ',
+        present: 'มาปกติ',
+        forfeited: 'ถูกตัดสิทธิ์',
+        eligible: 'มีสิทธิ์',
+        minutes: 'นาที',
+        employeeFallback: (id: number | string) => `พนักงาน #${id}`,
+      }
+    : {
+        title: 'Attendance Engine Results',
+        subtitle: 'Review calculated working hours, late minutes, meal allowances (`25 THB`), and overtime multipliers',
+        recalculate: 'Recalculate Selected Range',
+        runSuccess: (start: string, end: string) => `Triggered attendance recalculation engine from ${start} to ${end}`,
+        runError: (detail: string) => `Engine error: ${detail}`,
+        start: 'Start:',
+        end: 'End:',
+        onlyMissing: 'Only Missing Clocks',
+        onlyAbsent: 'Only Absent',
+        date: 'Date',
+        employee: 'Employee',
+        status: 'Status',
+        workingHours: 'Working Hrs',
+        lateMinutes: 'Late (Mins)',
+        overtimeHours: 'OT (Hrs)',
+        mealAllowance: 'Meal Allow.',
+        diligenceStatus: 'Diligence Status',
+        loading: 'Executing calculations across DB rule policies...',
+        empty: 'No attendance records found for the selected filter range.',
+        absent: 'Absent',
+        missingClock: 'Missing Clock',
+        present: 'Present',
+        forfeited: 'Forfeited',
+        eligible: 'Eligible',
+        minutes: 'm',
+        employeeFallback: (id: number | string) => `Emp #${id}`,
+      };
 
   const fetchRecords = async () => {
     try {
@@ -43,10 +103,10 @@ export default function AttendancePage() {
       setRunning(true);
       setMessage(null);
       await api.post('/attendance/run', { startDate, endDate });
-      setMessage(`Triggered attendance recalculation engine from ${startDate} to ${endDate}`);
+      setMessage(copy.runSuccess(startDate, endDate));
       await fetchRecords();
     } catch (e: any) {
-      setMessage(`Engine error: ${e.response?.data?.message || e.message}`);
+      setMessage(copy.runError(e.response?.data?.message || e.message));
     } finally {
       setRunning(false);
     }
@@ -58,10 +118,10 @@ export default function AttendancePage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-2.5">
-            <Clock className="text-indigo-400" /> Attendance Engine Results
+            <Clock className="text-indigo-400" /> {copy.title}
           </h2>
           <p className="text-xs text-neutral-400 mt-1">
-            Review calculated working hours, late minutes, meal allowances (`25 THB`), and overtime multipliers
+            {copy.subtitle}
           </p>
         </div>
 
@@ -75,7 +135,7 @@ export default function AttendancePage() {
           ) : (
             <Play size={16} className="fill-white" />
           )}
-          <span>Recalculate Selected Range</span>
+          <span>{copy.recalculate}</span>
         </button>
       </div>
 
@@ -91,7 +151,7 @@ export default function AttendancePage() {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 text-xs font-semibold text-neutral-300">
             <Calendar size={14} className="text-indigo-400" />
-            <span>Start:</span>
+            <span>{copy.start}</span>
             <input
               type="date"
               value={startDate}
@@ -101,7 +161,7 @@ export default function AttendancePage() {
           </div>
 
           <div className="flex items-center gap-2 text-xs font-semibold text-neutral-300">
-            <span>End:</span>
+            <span>{copy.end}</span>
             <input
               type="date"
               value={endDate}
@@ -120,7 +180,7 @@ export default function AttendancePage() {
                 : 'bg-neutral-800/80 text-neutral-400 border-neutral-700 hover:text-white'
             }`}
           >
-            <AlertTriangle size={14} /> Only Missing Clocks
+            <AlertTriangle size={14} /> {copy.onlyMissing}
           </button>
 
           <button
@@ -131,7 +191,7 @@ export default function AttendancePage() {
                 : 'bg-neutral-800/80 text-neutral-400 border-neutral-700 hover:text-white'
             }`}
           >
-            Only Absent
+            {copy.onlyAbsent}
           </button>
         </div>
       </div>
@@ -141,14 +201,14 @@ export default function AttendancePage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Employee</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Working Hrs</TableHead>
-              <TableHead>Late (Mins)</TableHead>
-              <TableHead>OT (Hrs)</TableHead>
-              <TableHead>Meal Allow.</TableHead>
-              <TableHead>Diligence Status</TableHead>
+              <TableHead>{copy.date}</TableHead>
+              <TableHead>{copy.employee}</TableHead>
+              <TableHead>{copy.status}</TableHead>
+              <TableHead>{copy.workingHours}</TableHead>
+              <TableHead>{copy.lateMinutes}</TableHead>
+              <TableHead>{copy.overtimeHours}</TableHead>
+              <TableHead>{copy.mealAllowance}</TableHead>
+              <TableHead>{copy.diligenceStatus}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -157,32 +217,32 @@ export default function AttendancePage() {
                 <TableCell colSpan={8} className="text-center py-10 text-neutral-500">
                   <div className="flex items-center justify-center gap-2">
                     <RefreshCw size={16} className="animate-spin text-indigo-400" />
-                    <span>Executing calculations across DB rule policies...</span>
+                    <span>{copy.loading}</span>
                   </div>
                 </TableCell>
               </TableRow>
             ) : records.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-10 text-neutral-500">
-                  No attendance records found for the selected filter range.
+                  {copy.empty}
                 </TableCell>
               </TableRow>
             ) : (
               records.map((rec) => (
                 <TableRow key={rec.id}>
                   <TableCell className="font-mono text-xs text-neutral-300">
-                    {formatDate(rec.date)}
+                    {formatDate(rec.date, dateLocale)}
                   </TableCell>
                   <TableCell className="font-semibold text-white">
-                    {rec.employee ? `${rec.employee.firstName} ${rec.employee.lastName}` : `Emp #${rec.employeeId}`}
+                    {rec.employee ? `${rec.employee.firstName} ${rec.employee.lastName}` : copy.employeeFallback(rec.employeeId)}
                   </TableCell>
                   <TableCell>
                     {rec.isAbsent ? (
-                      <Badge variant="destructive">Absent</Badge>
+                      <Badge variant="destructive">{copy.absent}</Badge>
                     ) : rec.missingClock ? (
-                      <Badge variant="warning">Missing Clock</Badge>
+                      <Badge variant="warning">{copy.missingClock}</Badge>
                     ) : (
-                      <Badge variant="success">Present</Badge>
+                      <Badge variant="success">{copy.present}</Badge>
                     )}
                   </TableCell>
                   <TableCell className="font-mono text-xs text-indigo-300">
@@ -190,9 +250,9 @@ export default function AttendancePage() {
                   </TableCell>
                   <TableCell className="font-mono text-xs">
                     {rec.lateSeconds > 0 ? (
-                      <span className="text-amber-400 font-semibold">{Math.floor(rec.lateSeconds / 60)} m</span>
+                      <span className="text-amber-400 font-semibold">{Math.floor(rec.lateSeconds / 60)} {copy.minutes}</span>
                     ) : (
-                      <span className="text-neutral-500">0 m</span>
+                      <span className="text-neutral-500">0 {copy.minutes}</span>
                     )}
                   </TableCell>
                   <TableCell className="font-mono text-xs text-purple-300">
@@ -203,9 +263,9 @@ export default function AttendancePage() {
                   </TableCell>
                   <TableCell>
                     {rec.lateSeconds > 15 * 60 || rec.isAbsent ? (
-                      <Badge variant="destructive">Forfeited</Badge>
+                      <Badge variant="destructive">{copy.forfeited}</Badge>
                     ) : (
-                      <Badge variant="success">Eligible</Badge>
+                      <Badge variant="success">{copy.eligible}</Badge>
                     )}
                   </TableCell>
                 </TableRow>

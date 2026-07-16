@@ -17,20 +17,22 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { clearToken } from '@/lib/auth';
-
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/employees', label: 'Employees', icon: Users },
-  { href: '/attendance', label: 'Attendance', icon: Clock },
-  { href: '/import', label: 'Import Data', icon: Upload },
-  { href: '/rules', label: 'Rule Engine', icon: Settings },
-  { href: '/payroll', label: 'Payroll Export', icon: DollarSign },
-  { href: '/audit', label: 'Audit Logs', icon: FileText },
-];
+import { useLocale } from '@/lib/locale';
 
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = React.useState(false);
+  const { locale } = useLocale();
+
+  const navItems = [
+    { href: '/dashboard', label: locale === 'th' ? 'แดชบอร์ด' : 'Dashboard', icon: LayoutDashboard },
+    { href: '/employees', label: locale === 'th' ? 'พนักงาน' : 'Employees', icon: Users },
+    { href: '/attendance', label: locale === 'th' ? 'เวลาเข้างาน' : 'Attendance', icon: Clock },
+    { href: '/import', label: locale === 'th' ? 'นำเข้าข้อมูล' : 'Import Data', icon: Upload },
+    { href: '/rules', label: locale === 'th' ? 'กฎการคำนวณ' : 'Rule Engine', icon: Settings },
+    { href: '/payroll', label: locale === 'th' ? 'ส่งออกเงินเดือน' : 'Payroll Export', icon: DollarSign },
+    { href: '/audit', label: locale === 'th' ? 'บันทึกตรวจสอบ' : 'Audit Logs', icon: FileText },
+  ];
 
   const handleLogout = () => {
     clearToken();
@@ -108,7 +110,7 @@ export function Sidebar() {
           )}
         >
           <LogOut size={20} className="flex-shrink-0" />
-          {!collapsed && <span>Sign Out</span>}
+          {!collapsed && <span>{locale === 'th' ? 'ออกจากระบบ' : 'Sign Out'}</span>}
         </button>
       </div>
     </aside>

@@ -12,10 +12,10 @@ export function formatDuration(seconds: number): string {
   return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 }
 
-export function formatDate(dateStr?: string | Date): string {
+export function formatDate(dateStr?: string | Date, locale = 'en-GB'): string {
   if (!dateStr) return '-';
   const d = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
-  return d.toLocaleDateString('en-GB', {
+  return d.toLocaleDateString(locale, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',

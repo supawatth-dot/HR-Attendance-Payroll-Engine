@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { TopBar } from '@/components/layout/topbar';
 import { isAuthenticated } from '@/lib/auth';
+import { useLocaleText } from '@/lib/locale';
 
 export default function DashboardLayout({
   children,
@@ -11,6 +12,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [mounted, setMounted] = React.useState(false);
+  const tx = useLocaleText();
 
   React.useEffect(() => {
     setMounted(true);
@@ -24,7 +26,9 @@ export default function DashboardLayout({
       <div className="flex h-screen w-screen items-center justify-center bg-[#0a0a0f] text-indigo-400">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" />
-          <span className="text-sm font-medium animate-pulse">Initializing HR Engine...</span>
+          <span className="text-sm font-medium animate-pulse">
+            {tx('Initializing HR Engine...', 'กำลังเริ่มต้นระบบ HR Engine...')}
+          </span>
         </div>
       </div>
     );

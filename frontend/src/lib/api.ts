@@ -1,37 +1,113 @@
-import axios from 'axios';
 import { getToken, clearToken } from './auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1').replace(/\/$/, '');
 
-console.log('API URL:', API_URL);
+type RequestOptions = {
+  body?: BodyInit | Record<string, any>;
+  headers?: Record<string, string>;
+  params?: Record<string, any>;
+};
 
-const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+type ApiResponse<T = any> = {
+  data: T;
+  status: number;
+  headers: Headers;
+};
 
-api.interceptors.request.use((config) => {
-  const token = getToken();
-  if (token && config.headers) {
-    config.headers.Authorization = `Bearer ${token}`;
+class ApiError extends Error {
+  response?: { status: number; data: any };
+
+  constructor(message: string, response?: { status: number; data: any }) {
+    super(message);
+    this.name = 'ApiError';
+    this.response = response;
   }
-  return config;
-});
+}
 
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
+function buildUrl(path: string, params?: Record<string, any>) {
+  const url = new URL(`${API_BASE_URL}${path}`);
+
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') {
+        return;
+      }
+      url.searchParams.set(key, String(value));
+    });
+  }
+
+  return url.toString();
+}
+
+async function parseResponse(response: Response) {
+  const contentType = response.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    return response.json();
+  }
+
+  if (contentType.startsWith('text/')) {
+    return response.text();
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  return response.blob();
+}
+
+async function request<T = any>(method: string, path: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
+  const headers = new Headers(options.headers);
+  const token = getToken();
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  let body: BodyInit | undefined;
+  if (options.body instanceof FormData) {
+    body = options.body;
+  } else if (options.body !== undefined) {
+    headers.set('Content-Type', 'application/json');
+    body = JSON.stringify(options.body);
+  }
+
+  const response = await fetch(buildUrl(path, options.params), {
+    method,
+    headers,
+    body,
+  });
+
+  const data = await parseResponse(response);
+
+  if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') {
       clearToken();
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }
     }
-    return Promise.reject(error);
+
+    throw new ApiError(
+      typeof data === 'object' && data && 'message' in data ? String(data.message) : `Request failed with status ${response.status}`,
+      { status: response.status, data }
+    );
   }
-);
+
+  return { data: data as T, status: response.status, headers: response.headers };
+}
+
+const api = {
+  get: <T = any>(path: string, options: Omit<RequestOptions, 'body'> = {}) => request<T>('GET', path, options),
+  post: <T = any>(path: string, body?: RequestOptions['body'], options: Omit<RequestOptions, 'body'> = {}) =>
+    request<T>('POST', path, { ...options, body }),
+  put: <T = any>(path: string, body?: RequestOptions['body'], options: Omit<RequestOptions, 'body'> = {}) =>
+    request<T>('PUT', path, { ...options, body }),
+  patch: <T = any>(path: string, body?: RequestOptions['body'], options: Omit<RequestOptions, 'body'> = {}) =>
+    request<T>('PATCH', path, { ...options, body }),
+  delete: <T = any>(path: string, options: Omit<RequestOptions, 'body'> = {}) => request<T>('DELETE', path, options),
+};
 
 export default api;
 
@@ -46,7 +122,12 @@ export async function runAttendanceEngine(startDate: string, endDate: string) {
 }
 
 export async function getEmployees(params?: any) {
-  const res = await api.get('/employees', { params });
+  const normalizedParams = { ...params };
+  if (normalizedParams?.pageSize && !normalizedParams.limit) {
+    normalizedParams.limit = normalizedParams.pageSize;
+  }
+
+  const res = await api.get('/employees', { params: normalizedParams });
   return res.data;
 }
 
@@ -63,15 +144,13 @@ export async function deleteEmployee(id: number | string) {
 export async function importAttendance(file: File, onProgress?: (pct: number) => void) {
   const formData = new FormData();
   formData.append('file', file);
-  return api.post('/import/attendance', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    onUploadProgress: (progressEvent) => {
-      if (onProgress && progressEvent.total) {
-        const pct = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        onProgress(pct);
-      }
-    },
+
+  const response = await api.post('/import/attendance', formData, {
+    headers: {},
   });
+
+  onProgress?.(100);
+  return response;
 }
 
 export async function getDepartments() {

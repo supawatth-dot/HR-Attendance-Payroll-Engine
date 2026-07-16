@@ -3,16 +3,49 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { UserPlus, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { UserPlus, ArrowLeft } from 'lucide-react';
 import api from '@/lib/api';
 import Link from 'next/link';
+import { useLocale } from '@/lib/locale';
 
 export default function NewEmployeePage() {
   const router = useRouter();
+  const { locale } = useLocale();
   const [departments, setDepartments] = useState<any[]>([]);
   const [shifts, setShifts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const copy = locale === 'th'
+    ? {
+        back: 'กลับไปรายชื่อพนักงาน',
+        title: 'ลงทะเบียนพนักงานใหม่',
+        subtitle: 'กะงานและแผนกที่กำหนดจะมีผลต่อ rule engine overrides',
+        createError: 'สร้างพนักงานไม่สำเร็จ กรุณาตรวจสอบว่ากรอกข้อมูลครบทุกช่อง',
+        firstName: 'ชื่อ',
+        lastName: 'นามสกุล',
+        department: 'แผนก',
+        assignedShift: 'กะงานที่กำหนด',
+        hireDate: 'วันที่เริ่มงาน',
+        firstNamePlaceholder: 'เช่น สมชาย',
+        lastNamePlaceholder: 'เช่น ใจดี',
+        cancel: 'ยกเลิก',
+        submit: 'ลงทะเบียนพนักงาน',
+      }
+    : {
+        back: 'Back to Employee Directory',
+        title: 'Enroll New Employee',
+        subtitle: 'Assigned shift and department determine rule engine overrides',
+        createError: 'Failed creating employee. Ensure all fields are filled.',
+        firstName: 'First Name',
+        lastName: 'Last Name',
+        department: 'Department',
+        assignedShift: 'Assigned Shift',
+        hireDate: 'Hire Date',
+        firstNamePlaceholder: 'e.g. Somchai',
+        lastNamePlaceholder: 'e.g. Jaidee',
+        cancel: 'Cancel',
+        submit: 'Enroll Employee',
+      };
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -48,7 +81,7 @@ export default function NewEmployeePage() {
       });
       router.push('/employees');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed creating employee. Ensure all fields are filled.');
+      setError(err.response?.data?.message || copy.createError);
     } finally {
       setLoading(false);
     }
@@ -61,7 +94,7 @@ export default function NewEmployeePage() {
           href="/employees"
           className="inline-flex items-center gap-2 text-xs font-semibold text-neutral-400 hover:text-white transition-colors"
         >
-          <ArrowLeft size={16} /> Back to Employee Directory
+          <ArrowLeft size={16} /> {copy.back}
         </Link>
       </div>
 
@@ -71,8 +104,8 @@ export default function NewEmployeePage() {
             <UserPlus size={20} />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white">Enroll New Employee</h2>
-            <p className="text-xs text-neutral-400">Assigned shift and department determine rule engine overrides</p>
+            <h2 className="text-xl font-bold text-white">{copy.title}</h2>
+            <p className="text-xs text-neutral-400">{copy.subtitle}</p>
           </div>
         </div>
 
@@ -86,28 +119,28 @@ export default function NewEmployeePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-300 mb-1.5">
-                First Name <span className="text-rose-400">*</span>
+                {copy.firstName} <span className="text-rose-400">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={formData.firstName}
                 onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                placeholder="e.g. Somchai"
+                placeholder={copy.firstNamePlaceholder}
                 className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3.5 py-2.5 text-sm text-neutral-100 focus:border-indigo-500 focus:outline-none"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-300 mb-1.5">
-                Last Name <span className="text-rose-400">*</span>
+                {copy.lastName} <span className="text-rose-400">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={formData.lastName}
                 onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                placeholder="e.g. Jaidee"
+                placeholder={copy.lastNamePlaceholder}
                 className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3.5 py-2.5 text-sm text-neutral-100 focus:border-indigo-500 focus:outline-none"
               />
             </div>
@@ -116,7 +149,7 @@ export default function NewEmployeePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-300 mb-1.5">
-                Department
+                {copy.department}
               </label>
               <select
                 value={formData.departmentId}
@@ -133,7 +166,7 @@ export default function NewEmployeePage() {
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-300 mb-1.5">
-                Assigned Shift
+                {copy.assignedShift}
               </label>
               <select
                 value={formData.shiftId}
@@ -151,7 +184,7 @@ export default function NewEmployeePage() {
 
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-300 mb-1.5">
-              Hire Date <span className="text-rose-400">*</span>
+              {copy.hireDate} <span className="text-rose-400">*</span>
             </label>
             <input
               type="date"
@@ -167,7 +200,7 @@ export default function NewEmployeePage() {
               href="/employees"
               className="rounded-lg border border-neutral-700 bg-neutral-800/80 px-4 py-2.5 text-sm font-semibold text-neutral-300 hover:bg-neutral-800 transition-colors"
             >
-              Cancel
+              {copy.cancel}
             </Link>
             <button
               type="submit"
@@ -175,7 +208,7 @@ export default function NewEmployeePage() {
               className="rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 hover:from-indigo-500 hover:to-purple-500 transition-all disabled:opacity-50 flex items-center gap-2"
             >
               {loading && <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
-              <span>Enroll Employee</span>
+              <span>{copy.submit}</span>
             </button>
           </div>
         </form>

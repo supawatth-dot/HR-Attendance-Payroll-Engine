@@ -1,4 +1,10 @@
 {
+  "scripts": {
+    "mock:api": "node mock-server.js",
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:mock": "NEXT_PUBLIC_API_URL=http://localhost:3000/api/v1 npm --prefix frontend run dev",
+    "backend:dev": "npm --prefix backend run start:dev"
+  },
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.2.1"

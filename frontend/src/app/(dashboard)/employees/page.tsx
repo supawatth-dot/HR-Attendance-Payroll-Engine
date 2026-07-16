@@ -14,10 +14,12 @@ import {
 } from '@/components/ui/dialog'
 import { getEmployees, deleteEmployee } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
+import { getDateLocale, useLocale } from '@/lib/locale'
 import { toast } from '@/components/ui/use-toast'
 import type { Employee } from '@/types'
 
 export default function EmployeesPage() {
+  const { locale } = useLocale()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -27,20 +29,88 @@ export default function EmployeesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const pageSize = 15
+  const dateLocale = getDateLocale(locale)
+  const copy = locale === 'th'
+    ? {
+        title: 'พนักงาน',
+        totalEmployees: (count: number) => `${count} พนักงานทั้งหมด`,
+        addEmployee: 'เพิ่มพนักงาน',
+        searchPlaceholder: 'ค้นหาจากชื่อ รหัส อีเมล หรือตำแหน่ง…',
+        emptyTitle: 'ไม่พบข้อมูลพนักงาน',
+        emptySearch: 'ลองปรับคำค้นหาใหม่',
+        emptyDefault: 'เริ่มต้นด้วยการเพิ่มพนักงานคนแรก',
+        code: 'รหัส',
+        name: 'ชื่อ',
+        department: 'แผนก',
+        position: 'ตำแหน่ง',
+        shift: 'กะงาน',
+        hireDate: 'วันที่เริ่มงาน',
+        status: 'สถานะ',
+        actions: 'การทำงาน',
+        notAvailable: '—',
+        editTitle: 'แก้ไขพนักงาน',
+        deleteTitle: 'ลบพนักงาน',
+        active: 'ใช้งาน',
+        inactive: 'ไม่ใช้งาน',
+        deletedToast: 'ลบพนักงานแล้ว',
+        deletedDescription: (name: string) => `นำ ${name} ออกจากระบบเรียบร้อยแล้ว`,
+        errorToast: 'เกิดข้อผิดพลาด',
+        errorDescription: 'ลบพนักงานไม่สำเร็จ กรุณาลองใหม่อีกครั้ง',
+        pageSummary: (page: number, totalPages: number, total: number) => `หน้า ${page} จาก ${totalPages} · ${total} พนักงาน`,
+        deleteDialogTitle: 'ลบพนักงาน',
+        deleteDialogDescription: (name: string, code: string) =>
+          `คุณแน่ใจหรือไม่ว่าต้องการลบ ${name} (${code}) การกระทำนี้ไม่สามารถย้อนกลับได้ และจะลบข้อมูลเวลาเข้างานกับเงินเดือนที่เกี่ยวข้องทั้งหมด`,
+        cancel: 'ยกเลิก',
+        confirmDelete: 'ลบพนักงาน',
+      }
+    : {
+        title: 'Employees',
+        totalEmployees: (count: number) => `${count} total employees`,
+        addEmployee: 'Add Employee',
+        searchPlaceholder: 'Search by name, code, email or position…',
+        emptyTitle: 'No employees found',
+        emptySearch: 'Try adjusting your search terms.',
+        emptyDefault: 'Start by adding your first employee.',
+        code: 'Code',
+        name: 'Name',
+        department: 'Department',
+        position: 'Position',
+        shift: 'Shift',
+        hireDate: 'Hire Date',
+        status: 'Status',
+        actions: 'Actions',
+        notAvailable: '—',
+        editTitle: 'Edit employee',
+        deleteTitle: 'Delete employee',
+        active: 'active',
+        inactive: 'inactive',
+        deletedToast: 'Employee deleted',
+        deletedDescription: (name: string) => `${name} has been removed.`,
+        errorToast: 'Error',
+        errorDescription: 'Failed to delete employee. Please try again.',
+        pageSummary: (page: number, totalPages: number, total: number) => `Page ${page} of ${totalPages} · ${total} employees`,
+        deleteDialogTitle: 'Delete Employee',
+        deleteDialogDescription: (name: string, code: string) =>
+          `Are you sure you want to delete ${name} (${code})? This action cannot be undone and will remove all associated attendance and payroll records.`,
+        cancel: 'Cancel',
+        confirmDelete: 'Delete Employee',
+      }
 
   const fetchEmployees = useCallback(async () => {
     setIsLoading(true)
     try {
       const response = await getEmployees({ page, pageSize, search })
-      setEmployees(response.data.data)
-      setTotalPages(response.data.totalPages)
-      setTotal(response.data.total)
+      setEmployees(response.data || [])
+      setTotalPages(response.totalPages || 1)
+      setTotal(response.total || 0)
     } catch {
       // Use mock data when API is unavailable
       const firstNames = ['Somchai', 'Malee', 'Niran', 'Pranee', 'Krit', 'Wassana', 'Thana', 'Siriporn', 'Wichai', 'Ladda']
       const lastNames  = ['Jaidee', 'Sombat', 'Pongpan', 'Charoen', 'Manee', 'Yodsak', 'Phon', 'Rung', 'Chan', 'Dee']
-      const positions  = ['Senior Developer', 'HR Manager', 'Accountant', 'Developer', 'HR Officer']
-      const deptNames  = ['Engineering', 'HR', 'Finance']
+      const positions  = locale === 'th'
+        ? ['นักพัฒนาอาวุโส', 'ผู้จัดการ HR', 'นักบัญชี', 'นักพัฒนา', 'เจ้าหน้าที่ HR']
+        : ['Senior Developer', 'HR Manager', 'Accountant', 'Developer', 'HR Officer']
+      const deptNames  = locale === 'th' ? ['วิศวกรรม', 'ทรัพยากรบุคคล', 'การเงิน'] : ['Engineering', 'HR', 'Finance']
       const deptCodes  = ['ENG', 'HR', 'FIN']
 
       const mockData: Employee[] = Array.from({ length: 10 }, (_, i) => {
@@ -84,7 +154,7 @@ export default function EmployeesPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [page, search])
+  }, [locale, page, search])
 
   useEffect(() => {
     const timer = setTimeout(fetchEmployees, 300)
@@ -96,17 +166,18 @@ export default function EmployeesPage() {
     setIsDeleting(true)
     try {
       await deleteEmployee(deleteTarget.id)
+      const employeeName = deleteTarget.fullName || `${deleteTarget.firstName} ${deleteTarget.lastName}`
       toast({
-        title: 'Employee deleted',
-        description: `${deleteTarget.fullName} has been removed.`,
+        title: copy.deletedToast,
+        description: copy.deletedDescription(employeeName),
         variant: 'default',
       })
       setDeleteTarget(null)
       fetchEmployees()
     } catch {
       toast({
-        title: 'Error',
-        description: 'Failed to delete employee. Please try again.',
+        title: copy.errorToast,
+        description: copy.errorDescription,
         variant: 'destructive',
       })
     } finally {
@@ -123,14 +194,14 @@ export default function EmployeesPage() {
             <Users className="h-5 w-5 text-indigo-400" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-white">Employees</h2>
-            <p className="text-slate-400 text-sm mt-0.5">{total} total employees</p>
+            <h2 className="text-2xl font-bold text-white">{copy.title}</h2>
+            <p className="text-slate-400 text-sm mt-0.5">{copy.totalEmployees(total)}</p>
           </div>
         </div>
         <Link href="/employees/new">
           <Button id="add-employee-btn">
             <Plus className="h-4 w-4" />
-            Add Employee
+            {copy.addEmployee}
           </Button>
         </Link>
       </div>
@@ -144,7 +215,7 @@ export default function EmployeesPage() {
               <input
                 id="employee-search"
                 type="text"
-                placeholder="Search by name, code, email or position…"
+                placeholder={copy.searchPlaceholder}
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value)
@@ -168,23 +239,23 @@ export default function EmployeesPage() {
               <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4">
                 <Users className="h-8 w-8 text-slate-500" />
               </div>
-              <p className="text-white font-medium">No employees found</p>
+              <p className="text-white font-medium">{copy.emptyTitle}</p>
               <p className="text-slate-500 text-sm mt-1">
-                {search ? 'Try adjusting your search terms.' : 'Start by adding your first employee.'}
+                {search ? copy.emptySearch : copy.emptyDefault}
               </p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Position</TableHead>
-                  <TableHead>Shift</TableHead>
-                  <TableHead>Hire Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{copy.code}</TableHead>
+                  <TableHead>{copy.name}</TableHead>
+                  <TableHead>{copy.department}</TableHead>
+                  <TableHead>{copy.position}</TableHead>
+                  <TableHead>{copy.shift}</TableHead>
+                  <TableHead>{copy.hireDate}</TableHead>
+                  <TableHead>{copy.status}</TableHead>
+                  <TableHead className="text-right">{copy.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -210,7 +281,7 @@ export default function EmployeesPage() {
 
                     <TableCell>
                       <span className="text-slate-300 text-sm">
-                        {emp.department?.name || '—'}
+                        {emp.department?.name || copy.notAvailable}
                       </span>
                     </TableCell>
 
@@ -218,12 +289,12 @@ export default function EmployeesPage() {
 
                     <TableCell>
                       <span className="text-slate-300 text-sm">
-                        {emp.shift?.name || '—'}
+                        {emp.shift?.name || copy.notAvailable}
                       </span>
                     </TableCell>
 
                     <TableCell className="text-slate-300 text-sm whitespace-nowrap">
-                      {formatDate(emp.hireDate)}
+                      {formatDate(emp.hireDate, dateLocale)}
                     </TableCell>
 
                     <TableCell>
@@ -236,7 +307,7 @@ export default function EmployeesPage() {
                             : 'destructive'
                         }
                       >
-                        {emp.status}
+                        {emp.status === 'active' ? copy.active : emp.status === 'inactive' ? copy.inactive : emp.status}
                       </Badge>
                     </TableCell>
 
@@ -244,14 +315,14 @@ export default function EmployeesPage() {
                       <div className="flex items-center justify-end gap-2">
                         <Link href={`/employees/${emp.id}/edit`}>
                           <button
-                            title="Edit employee"
+                            title={copy.editTitle}
                             className="w-8 h-8 rounded-lg bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 border border-white/5 flex items-center justify-center text-slate-400 transition-all duration-150"
                           >
                             <Edit className="h-3.5 w-3.5" />
                           </button>
                         </Link>
                         <button
-                          title="Delete employee"
+                          title={copy.deleteTitle}
                           onClick={() => setDeleteTarget(emp)}
                           className="w-8 h-8 rounded-lg bg-white/5 hover:bg-red-500/20 hover:text-red-400 border border-white/5 flex items-center justify-center text-slate-400 transition-all duration-150"
                         >
@@ -269,7 +340,7 @@ export default function EmployeesPage() {
           {!isLoading && employees.length > 0 && (
             <div className="flex items-center justify-between px-6 py-4 border-t border-white/[0.04]">
               <p className="text-sm text-slate-400">
-                Page {page} of {totalPages}&ensp;·&ensp;{total} employees
+                {copy.pageSummary(page, totalPages, total)}
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -322,19 +393,19 @@ export default function EmployeesPage() {
             <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-2">
               <Trash2 className="h-5 w-5 text-red-400" />
             </div>
-            <DialogTitle>Delete Employee</DialogTitle>
+            <DialogTitle>{copy.deleteDialogTitle}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete{' '}
-              <strong className="text-white">
-                {deleteTarget?.firstName} {deleteTarget?.lastName}
-              </strong>
-              {' '}({deleteTarget?.employeeCode})? This action cannot be undone and will remove all
-              associated attendance and payroll records.
+              {deleteTarget
+                ? copy.deleteDialogDescription(
+                    `${deleteTarget.firstName} ${deleteTarget.lastName}`,
+                    deleteTarget.employeeCode || '-'
+                  )
+                : ''}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 mt-2">
             <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={isDeleting}>
-              Cancel
+              {copy.cancel}
             </Button>
             <Button
               variant="destructive"
@@ -342,7 +413,7 @@ export default function EmployeesPage() {
               isLoading={isDeleting}
               id="confirm-delete-btn"
             >
-              Delete Employee
+              {copy.confirmDelete}
             </Button>
           </DialogFooter>
         </DialogContent>

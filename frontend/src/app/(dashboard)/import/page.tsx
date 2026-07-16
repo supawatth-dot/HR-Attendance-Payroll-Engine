@@ -1,20 +1,99 @@
 'use client'
 
 import React, { useState, useCallback, useRef } from 'react'
-import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, X, History } from 'lucide-react'
+import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { importAttendance } from '@/lib/api'
+import { useLocale } from '@/lib/locale'
 import type { ImportBatchResult } from '@/types'
 
 export default function ImportPage() {
+  const { locale } = useLocale()
   const [isDragging, setIsDragging] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [result, setResult] = useState<ImportBatchResult | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const copy = locale === 'th'
+    ? {
+        title: 'นำเข้าข้อมูลเวลาเข้างาน',
+        subtitle: 'อัปโหลดไฟล์ CSV หรือ Excel เพื่อนำเข้าบันทึกเวลาเข้างาน',
+        removeFile: 'ลบไฟล์',
+        dropHere: 'วางไฟล์ที่นี่',
+        dragDrop: 'ลากและวางไฟล์ของคุณ',
+        clickBrowse: 'หรือคลิกเพื่อเลือกไฟล์',
+        uploading: 'กำลังอัปโหลด...',
+        uploadButton: 'นำเข้าข้อมูลเวลาเข้างาน',
+        importComplete: 'นำเข้าเสร็จสิ้น',
+        totalRows: 'จำนวนแถวทั้งหมด',
+        imported: 'นำเข้าสำเร็จ',
+        errors: 'ข้อผิดพลาด',
+        importErrors: 'ข้อผิดพลาดในการนำเข้า',
+        row: 'แถว',
+        column: 'คอลัมน์',
+        value: 'ค่า',
+        error: 'ข้อผิดพลาด',
+        noValue: '-',
+        formatTitle: 'รูปแบบไฟล์ที่ต้องใช้',
+        headers: ['คอลัมน์', 'ชนิด', 'จำเป็น', 'รูปแบบ', 'ตัวอย่าง'],
+        yes: 'ใช่',
+        no: 'ไม่',
+        mockErrors: [
+          { row: 12, column: 'employee_code', value: 'EMP9999', message: 'ไม่พบพนักงาน' },
+          { row: 34, column: 'date', value: '2024-13-01', message: 'รูปแบบวันที่ไม่ถูกต้อง' },
+          { row: 67, column: 'check_in', value: '25:00', message: 'ค่าเวลาไม่ถูกต้อง' },
+          { row: 89, column: 'employee_code', value: '', message: 'ต้องระบุรหัสพนักงาน' },
+          { row: 102, column: 'check_out', value: '07:00', message: 'เวลาออกงานก่อนเวลาเข้างาน' },
+        ],
+        formatRows: [
+          ['employee_code', 'ข้อความ', 'ใช่', 'EMP + 4 หลัก', 'EMP0001'],
+          ['date', 'วันที่', 'ใช่', 'YYYY-MM-DD', '2024-07-01'],
+          ['check_in', 'เวลา', 'ไม่', 'HH:MM', '08:05'],
+          ['check_out', 'เวลา', 'ไม่', 'HH:MM', '17:30'],
+          ['leave_type', 'ข้อความ', 'ไม่', 'รหัสประเภทการลา', 'ANNUAL'],
+        ],
+      }
+    : {
+        title: 'Import Attendance Data',
+        subtitle: 'Upload CSV or Excel files to import attendance records',
+        removeFile: 'Remove file',
+        dropHere: 'Drop file here',
+        dragDrop: 'Drag & drop your file',
+        clickBrowse: 'or click to browse',
+        uploading: 'Uploading...',
+        uploadButton: 'Import Attendance Data',
+        importComplete: 'Import Complete',
+        totalRows: 'Total Rows',
+        imported: 'Imported',
+        errors: 'Errors',
+        importErrors: 'Import Errors',
+        row: 'Row',
+        column: 'Column',
+        value: 'Value',
+        error: 'Error',
+        noValue: '-',
+        formatTitle: 'Required File Format',
+        headers: ['Column', 'Type', 'Required', 'Format', 'Example'],
+        yes: 'Yes',
+        no: 'No',
+        mockErrors: [
+          { row: 12, column: 'employee_code', value: 'EMP9999', message: 'Employee not found' },
+          { row: 34, column: 'date', value: '2024-13-01', message: 'Invalid date format' },
+          { row: 67, column: 'check_in', value: '25:00', message: 'Invalid time value' },
+          { row: 89, column: 'employee_code', value: '', message: 'Employee code is required' },
+          { row: 102, column: 'check_out', value: '07:00', message: 'Check-out before check-in' },
+        ],
+        formatRows: [
+          ['employee_code', 'String', 'Yes', 'EMP + 4 digits', 'EMP0001'],
+          ['date', 'Date', 'Yes', 'YYYY-MM-DD', '2024-07-01'],
+          ['check_in', 'Time', 'No', 'HH:MM', '08:05'],
+          ['check_out', 'Time', 'No', 'HH:MM', '17:30'],
+          ['leave_type', 'String', 'No', 'leave type code', 'ANNUAL'],
+        ],
+      }
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -61,13 +140,7 @@ export default function ImportPage() {
         successRows: 145,
         errorRows: 5,
         status: 'completed',
-        errors: [
-          { row: 12, column: 'employee_code', value: 'EMP9999', message: 'Employee not found' },
-          { row: 34, column: 'date', value: '2024-13-01', message: 'Invalid date format' },
-          { row: 67, column: 'check_in', value: '25:00', message: 'Invalid time value' },
-          { row: 89, column: 'employee_code', value: '', message: 'Employee code is required' },
-          { row: 102, column: 'check_out', value: '07:00', message: 'Check-out before check-in' },
-        ],
+        errors: copy.mockErrors,
         createdAt: new Date().toISOString(),
         completedAt: new Date().toISOString(),
       })
@@ -79,8 +152,8 @@ export default function ImportPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h2 className="text-2xl font-bold text-white">Import Attendance Data</h2>
-        <p className="text-slate-400 text-sm mt-1">Upload CSV or Excel files to import attendance records</p>
+        <h2 className="text-2xl font-bold text-white">{copy.title}</h2>
+        <p className="text-slate-400 text-sm mt-1">{copy.subtitle}</p>
       </div>
 
       {/* Drop Zone */}
@@ -124,7 +197,7 @@ export default function ImportPage() {
                   onClick={(e) => { e.stopPropagation(); setFile(null); setResult(null) }}
                   className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
                 >
-                  <X className="h-4 w-4" /> Remove file
+                  <X className="h-4 w-4" /> {copy.removeFile}
                 </button>
               </div>
             ) : (
@@ -138,9 +211,9 @@ export default function ImportPage() {
                 </div>
                 <div>
                   <p className="text-lg font-semibold text-white">
-                    {isDragging ? 'Drop file here' : 'Drag & drop your file'}
+                    {isDragging ? copy.dropHere : copy.dragDrop}
                   </p>
-                  <p className="text-sm text-slate-400 mt-1">or click to browse</p>
+                  <p className="text-sm text-slate-400 mt-1">{copy.clickBrowse}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="default">.CSV</Badge>
@@ -154,7 +227,7 @@ export default function ImportPage() {
           {isUploading && (
             <div className="mt-6">
               <div className="flex items-center justify-between text-sm mb-2">
-                <span className="text-slate-300">Uploading...</span>
+                <span className="text-slate-300">{copy.uploading}</span>
                 <span className="text-indigo-400 font-medium">{progress}%</span>
               </div>
               <div className="h-2 bg-white/5 rounded-full overflow-hidden">
@@ -170,7 +243,7 @@ export default function ImportPage() {
             <div className="mt-6 flex justify-center">
               <Button onClick={handleUpload} isLoading={isUploading} id="upload-btn" size="lg">
                 <Upload className="h-5 w-5" />
-                Import Attendance Data
+                {copy.uploadButton}
               </Button>
             </div>
           )}
@@ -193,21 +266,21 @@ export default function ImportPage() {
                   </div>
                 )}
                 <div className="flex-1">
-                  <h3 className="font-semibold text-white">Import Complete</h3>
+                  <h3 className="font-semibold text-white">{copy.importComplete}</h3>
                   <p className="text-sm text-slate-400 mt-0.5">{result.filename}</p>
                 </div>
                 <div className="flex gap-6 text-center">
                   <div>
                     <p className="text-2xl font-bold text-white">{result.totalRows}</p>
-                    <p className="text-xs text-slate-400">Total Rows</p>
+                    <p className="text-xs text-slate-400">{copy.totalRows}</p>
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-emerald-400">{result.successRows}</p>
-                    <p className="text-xs text-slate-400">Imported</p>
+                    <p className="text-xs text-slate-400">{copy.imported}</p>
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-red-400">{result.errorRows}</p>
-                    <p className="text-xs text-slate-400">Errors</p>
+                    <p className="text-xs text-slate-400">{copy.errors}</p>
                   </div>
                 </div>
               </div>
@@ -220,17 +293,17 @@ export default function ImportPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <AlertCircle className="h-4 w-4 text-red-400" />
-                  Import Errors
+                  {copy.importErrors}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-white/[0.05]">
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Row</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Column</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Value</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Error</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">{copy.row}</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">{copy.column}</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">{copy.value}</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">{copy.error}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -238,7 +311,7 @@ export default function ImportPage() {
                       <tr key={i} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
                         <td className="px-6 py-3 text-amber-400 font-mono">{error.row}</td>
                         <td className="px-6 py-3 text-slate-300 font-mono text-xs">{error.column}</td>
-                        <td className="px-6 py-3 text-slate-400 font-mono text-xs">{error.value || '-'}</td>
+                        <td className="px-6 py-3 text-slate-400 font-mono text-xs">{error.value || copy.noValue}</td>
                         <td className="px-6 py-3 text-red-400">{error.message}</td>
                       </tr>
                     ))}
@@ -253,31 +326,25 @@ export default function ImportPage() {
       {/* Format Guide */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Required File Format</CardTitle>
+          <CardTitle className="text-base">{copy.formatTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/[0.05]">
-                  {['Column', 'Type', 'Required', 'Format', 'Example'].map(h => (
-                    <th key={h} className="px-4 py-2 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">{h}</th>
+                  {copy.headers.map((header) => (
+                    <th key={header} className="px-4 py-2 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">{header}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {[
-                  ['employee_code', 'String', 'Yes', 'EMP + 4 digits', 'EMP0001'],
-                  ['date', 'Date', 'Yes', 'YYYY-MM-DD', '2024-07-01'],
-                  ['check_in', 'Time', 'No', 'HH:MM', '08:05'],
-                  ['check_out', 'Time', 'No', 'HH:MM', '17:30'],
-                  ['leave_type', 'String', 'No', 'leave type code', 'ANNUAL'],
-                ].map(([col, type, req, fmt, ex]) => (
+                {copy.formatRows.map(([col, type, req, fmt, ex]) => (
                   <tr key={col} className="border-b border-white/[0.04]">
                     <td className="px-4 py-2 font-mono text-xs text-indigo-400">{col}</td>
                     <td className="px-4 py-2 text-slate-300">{type}</td>
                     <td className="px-4 py-2">
-                      <Badge variant={req === 'Yes' ? 'destructive' : 'default'}>{req}</Badge>
+                      <Badge variant={req === copy.yes ? 'destructive' : 'default'}>{req}</Badge>
                     </td>
                     <td className="px-4 py-2 text-slate-400">{fmt}</td>
                     <td className="px-4 py-2 font-mono text-xs text-slate-300">{ex}</td>

@@ -1,26 +1,39 @@
 export interface Department {
-  id: number;
+  id: number | string;
   name: string;
-  managerId?: number;
+  code?: string;
+  headCount?: number;
+  managerId?: number | string | null;
   _count?: { employees: number };
 }
 
 export interface Shift {
-  id: number;
+  id: number | string;
   name: string;
+  code?: string;
   startTime: string;
   endTime: string;
-  lunchBreakMinutes: number;
-  overnight: boolean;
+  lunchBreakMinutes?: number;
+  workingHours?: number;
+  graceMinutes?: number;
+  overnight?: boolean;
 }
 
 export interface Employee {
-  id: number;
+  id: number | string;
+  employeeCode?: string;
   firstName: string;
   lastName: string;
-  departmentId: number;
-  shiftId: number;
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  departmentId: number | string;
+  shiftId: number | string;
+  position?: string;
+  status?: string;
   hireDate: string;
+  createdAt?: string;
+  updatedAt?: string;
   terminationDate?: string | null;
   department?: Department;
   shift?: Shift;
@@ -107,4 +120,23 @@ export interface AuditLogRecord {
   newValue?: any;
   reason?: string;
   timestamp: string;
+}
+
+export interface ImportBatchError {
+  row: number;
+  column: string;
+  value: string;
+  message: string;
+}
+
+export interface ImportBatchResult {
+  id: number | string;
+  filename: string;
+  totalRows: number;
+  successRows: number;
+  errorRows: number;
+  status: string;
+  errors: ImportBatchError[];
+  createdAt: string;
+  completedAt?: string;
 }

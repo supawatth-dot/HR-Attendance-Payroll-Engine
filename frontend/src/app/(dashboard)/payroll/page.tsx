@@ -5,16 +5,64 @@ import { useState, useEffect } from 'react';
 import { DollarSign, Download, Play, CheckCircle2, FileSpreadsheet, FileText, Calendar, RefreshCw } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import api from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import api, { API_BASE_URL } from '@/lib/api';
+import { formatDate } from '@/lib/utils';
+import { getDateLocale, useLocale } from '@/lib/locale';
 
 export default function PayrollPage() {
+  const { locale } = useLocale();
   const [batches, setBatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [periodStart, setPeriodStart] = useState('2026-01-01');
   const [periodEnd, setPeriodEnd] = useState('2026-01-31');
   const [message, setMessage] = useState<string | null>(null);
+  const dateLocale = getDateLocale(locale);
+  const copy = locale === 'th'
+    ? {
+        title: 'ศูนย์สร้างและส่งออกเงินเดือน',
+        subtitle: 'สรุปชั่วโมงทำงาน โอที เบี้ยขยัน และค่าอาหารจากข้อมูลเวลาเข้างานเป็นรอบจ่ายเงินเดือนที่พร้อมใช้งาน',
+        runSuccess: (start: string, end: string) => `คำนวณรอบเงินเดือนสำหรับ ${start} ถึง ${end} เรียบร้อยแล้ว`,
+        runError: (detail: string) => `เกิดข้อผิดพลาดในการคำนวณเงินเดือน: ${detail}`,
+        payPeriodStart: 'เริ่มงวดจ่าย:',
+        payPeriodEnd: 'สิ้นสุดงวดจ่าย:',
+        generate: 'คำนวณและปิดรอบ',
+        batchId: 'รหัสรอบ',
+        payPeriod: 'งวดจ่าย',
+        createdAt: 'สร้างเมื่อ',
+        status: 'สถานะ',
+        employeeItems: 'พนักงาน / รายการ',
+        exportReports: 'ส่งออกรายงาน',
+        loading: 'กำลังโหลดประวัติรอบจ่ายเงินเดือน...',
+        empty: 'ยังไม่มีรอบเงินเดือน ลองเลือกช่วงวันที่และกด "คำนวณและปิดรอบ"',
+        finalized: 'สรุปแล้ว',
+        enrolledStaff: (count: number) => `${count} พนักงาน`,
+        excel: 'Excel (.xlsx)',
+        csv: 'CSV',
+        pdf: 'สลิป PDF',
+      }
+    : {
+        title: 'Payroll Generation & Export Hub',
+        subtitle: 'Aggregates attendance working hours, overtime pay, diligence bonuses, and meal allowances into finalized pay runs.',
+        runSuccess: (start: string, end: string) => `Successfully computed payroll batch for ${start} to ${end}`,
+        runError: (detail: string) => `Error generating payroll: ${detail}`,
+        payPeriodStart: 'Pay Period Start:',
+        payPeriodEnd: 'Pay Period End:',
+        generate: 'Calculate & Finalize Batch',
+        batchId: 'Batch ID',
+        payPeriod: 'Pay Period',
+        createdAt: 'Created At',
+        status: 'Status',
+        employeeItems: 'Employees / Items',
+        exportReports: 'Export Reports',
+        loading: 'Loading payroll run history...',
+        empty: 'No payroll batches generated yet. Select dates above and click `Calculate & Finalize Batch`.',
+        finalized: 'FINALIZED',
+        enrolledStaff: (count: number) => `${count} enrolled staff`,
+        excel: 'Excel (.xlsx)',
+        csv: 'CSV',
+        pdf: 'PDF Slip',
+      };
 
   const fetchBatches = async () => {
     try {
@@ -37,17 +85,17 @@ export default function PayrollPage() {
       setGenerating(true);
       setMessage(null);
       await api.post('/payroll/generate', { periodStart, periodEnd });
-      setMessage(`Successfully computed payroll batch for ${periodStart} to ${periodEnd}`);
+      setMessage(copy.runSuccess(periodStart, periodEnd));
       await fetchBatches();
     } catch (e: any) {
-      setMessage(`Error generating payroll: ${e.response?.data?.message || e.message}`);
+      setMessage(copy.runError(e.response?.data?.message || e.message));
     } finally {
       setGenerating(false);
     }
   };
 
   const handleExport = (batchId: number, format: 'xlsx' | 'csv' | 'pdf') => {
-    const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/payroll/batches/${batchId}/export?format=${format}`;
+    const url = `${API_BASE_URL}/payroll/batches/${batchId}/export?format=${format}`;
     window.open(url, '_blank');
   };
 
@@ -56,10 +104,10 @@ export default function PayrollPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-2.5">
-            <DollarSign className="text-emerald-400" /> Payroll Generation & Export Hub
+            <DollarSign className="text-emerald-400" /> {copy.title}
           </h2>
           <p className="text-xs text-neutral-400 mt-1">
-            Aggregates attendance working hours, overtime pay, diligence bonuses, and meal allowances into finalized pay runs.
+            {copy.subtitle}
           </p>
         </div>
       </div>
@@ -76,7 +124,7 @@ export default function PayrollPage() {
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 text-xs font-semibold text-neutral-300">
             <Calendar size={16} className="text-indigo-400" />
-            <span>Pay Period Start:</span>
+            <span>{copy.payPeriodStart}</span>
             <input
               type="date"
               value={periodStart}
@@ -86,7 +134,7 @@ export default function PayrollPage() {
           </div>
 
           <div className="flex items-center gap-2 text-xs font-semibold text-neutral-300">
-            <span>Pay Period End:</span>
+            <span>{copy.payPeriodEnd}</span>
             <input
               type="date"
               value={periodEnd}
@@ -106,7 +154,7 @@ export default function PayrollPage() {
           ) : (
             <Play size={16} className="fill-white" />
           )}
-          <span>Calculate & Finalize Batch</span>
+          <span>{copy.generate}</span>
         </button>
       </div>
 
@@ -115,12 +163,12 @@ export default function PayrollPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Batch ID</TableHead>
-              <TableHead>Pay Period</TableHead>
-              <TableHead>Created At</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Employees / Items</TableHead>
-              <TableHead className="text-right">Export Reports</TableHead>
+              <TableHead>{copy.batchId}</TableHead>
+              <TableHead>{copy.payPeriod}</TableHead>
+              <TableHead>{copy.createdAt}</TableHead>
+              <TableHead>{copy.status}</TableHead>
+              <TableHead>{copy.employeeItems}</TableHead>
+              <TableHead className="text-right">{copy.exportReports}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -129,14 +177,14 @@ export default function PayrollPage() {
                 <TableCell colSpan={6} className="text-center py-10 text-neutral-500">
                   <div className="flex items-center justify-center gap-2">
                     <RefreshCw size={16} className="animate-spin text-emerald-400" />
-                    <span>Loading payroll run history...</span>
+                    <span>{copy.loading}</span>
                   </div>
                 </TableCell>
               </TableRow>
             ) : batches.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-10 text-neutral-500">
-                  No payroll batches generated yet. Select dates above and click `Calculate & Finalize Batch`.
+                  {copy.empty}
                 </TableCell>
               </TableRow>
             ) : (
@@ -146,16 +194,16 @@ export default function PayrollPage() {
                     BATCH #{batch.id}
                   </TableCell>
                   <TableCell className="font-semibold text-white">
-                    {formatDate(batch.periodStart)} — {formatDate(batch.periodEnd)}
+                    {formatDate(batch.periodStart, dateLocale)} — {formatDate(batch.periodEnd, dateLocale)}
                   </TableCell>
                   <TableCell className="font-mono text-xs text-neutral-400">
-                    {formatDate(batch.createdAt)}
+                    {formatDate(batch.createdAt, dateLocale)}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="success">FINALIZED</Badge>
+                    <Badge variant="success">{copy.finalized}</Badge>
                   </TableCell>
                   <TableCell className="text-neutral-300 font-medium">
-                    {batch._count?.items || 0} enrolled staff
+                    {copy.enrolledStaff(batch._count?.items || 0)}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -163,19 +211,19 @@ export default function PayrollPage() {
                         onClick={() => handleExport(batch.id, 'xlsx')}
                         className="flex items-center gap-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 text-xs font-semibold transition-all"
                       >
-                        <FileSpreadsheet size={14} /> Excel (.xlsx)
+                        <FileSpreadsheet size={14} /> {copy.excel}
                       </button>
                       <button
                         onClick={() => handleExport(batch.id, 'csv')}
                         className="flex items-center gap-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 px-3 py-1.5 text-xs font-semibold transition-all"
                       >
-                        <Download size={14} /> CSV
+                        <Download size={14} /> {copy.csv}
                       </button>
                       <button
                         onClick={() => handleExport(batch.id, 'pdf')}
                         className="flex items-center gap-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-3 py-1.5 text-xs font-semibold transition-all"
                       >
-                        <FileText size={14} /> PDF Slip
+                        <FileText size={14} /> {copy.pdf}
                       </button>
                     </div>
                   </TableCell>

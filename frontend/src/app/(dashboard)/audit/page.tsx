@@ -2,16 +2,56 @@
 
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { ShieldCheck, FileText, Search, RefreshCw, Database } from 'lucide-react';
+import { ShieldCheck, Search, RefreshCw, Database } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { getDateLocale, useLocale } from '@/lib/locale';
 
 export default function AuditPage() {
+  const { locale } = useLocale();
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [tableName, setTableName] = useState('');
+  const dateLocale = getDateLocale(locale);
+  const copy = locale === 'th'
+    ? {
+        title: 'ประวัติการตรวจสอบแบบเปลี่ยนแปลงไม่ได้',
+        subtitle: 'บันทึกเพื่อ compliance สำหรับการลงทะเบียนพนักงาน การเปลี่ยนเวอร์ชันนโยบาย และการคำนวณเงินเดือนทั้งหมด',
+        placeholder: 'กรองตามชื่อตาราง...',
+        timestamp: 'เวลา',
+        entity: 'ข้อมูลเป้าหมาย',
+        recordId: 'รหัสข้อมูล',
+        operation: 'การทำงาน',
+        changedBy: 'แก้ไขโดย (รหัสผู้ใช้)',
+        reason: 'เหตุผล / หมายเหตุ',
+        loading: 'กำลังดึงประวัติ audit จาก PostgreSQL ที่ปลอดภัย...',
+        empty: 'ยังไม่มีเหตุการณ์ audit ตามเงื่อนไขที่ระบุ',
+        create: 'สร้าง',
+        update: 'แก้ไข',
+        delete: 'ลบ',
+        adminUser: (id: number | string) => `ผู้ใช้แอดมิน #${id}`,
+        fallbackReason: 'การทำงานมาตรฐานผ่าน dashboard/API',
+      }
+    : {
+        title: 'Enterprise Immutable Audit Trail',
+        subtitle: 'Complete compliance logging for all employee enrollments, rule policy version changes, and payroll calculations.',
+        placeholder: 'Filter by table name...',
+        timestamp: 'Timestamp',
+        entity: 'Target Entity',
+        recordId: 'Record ID',
+        operation: 'Operation',
+        changedBy: 'Changed By (User ID)',
+        reason: 'Reason / Notes',
+        loading: 'Querying secure audit trail from PostgreSQL...',
+        empty: 'No audit events recorded yet for the specified filter criteria.',
+        create: 'CREATE',
+        update: 'UPDATE',
+        delete: 'DELETE',
+        adminUser: (id: number | string) => `Admin User #${id}`,
+        fallbackReason: 'Standard system action via dashboard/API',
+      };
 
   const fetchLogs = async () => {
     try {
@@ -36,10 +76,10 @@ export default function AuditPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-2.5">
-            <ShieldCheck className="text-indigo-400" /> Enterprise Immutable Audit Trail
+            <ShieldCheck className="text-indigo-400" /> {copy.title}
           </h2>
           <p className="text-xs text-neutral-400 mt-1">
-            Complete compliance logging for all employee enrollments, rule policy version changes, and payroll calculations.
+            {copy.subtitle}
           </p>
         </div>
 
@@ -48,7 +88,7 @@ export default function AuditPage() {
             <Search size={14} className="absolute left-3 top-2.5 text-neutral-500" />
             <input
               type="text"
-              placeholder="Filter by table name..."
+              placeholder={copy.placeholder}
               value={tableName}
               onChange={(e) => setTableName(e.target.value)}
               className="rounded-xl border border-neutral-800 bg-neutral-900 pl-9 pr-4 py-1.5 text-xs text-neutral-100 focus:border-indigo-500 focus:outline-none"
@@ -67,12 +107,12 @@ export default function AuditPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Timestamp</TableHead>
-              <TableHead>Target Entity</TableHead>
-              <TableHead>Record ID</TableHead>
-              <TableHead>Operation</TableHead>
-              <TableHead>Changed By (User ID)</TableHead>
-              <TableHead>Reason / Notes</TableHead>
+              <TableHead>{copy.timestamp}</TableHead>
+              <TableHead>{copy.entity}</TableHead>
+              <TableHead>{copy.recordId}</TableHead>
+              <TableHead>{copy.operation}</TableHead>
+              <TableHead>{copy.changedBy}</TableHead>
+              <TableHead>{copy.reason}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -81,21 +121,21 @@ export default function AuditPage() {
                 <TableCell colSpan={6} className="text-center py-10 text-neutral-500">
                   <div className="flex items-center justify-center gap-2">
                     <RefreshCw size={16} className="animate-spin text-indigo-400" />
-                    <span>Querying secure audit trail from PostgreSQL...</span>
+                    <span>{copy.loading}</span>
                   </div>
                 </TableCell>
               </TableRow>
             ) : logs.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-10 text-neutral-500">
-                  No audit events recorded yet for the specified filter criteria.
+                  {copy.empty}
                 </TableCell>
               </TableRow>
             ) : (
               logs.map((log) => (
                 <TableRow key={log.id}>
                   <TableCell className="font-mono text-xs text-neutral-400">
-                    {formatDate(log.timestamp)}
+                    {formatDate(log.timestamp, dateLocale)}
                   </TableCell>
                   <TableCell className="font-bold text-white flex items-center gap-2">
                     <Database size={14} className="text-indigo-400" /> {log.tableName}
@@ -113,14 +153,18 @@ export default function AuditPage() {
                           : 'destructive'
                       }
                     >
-                      {log.operation}
+                      {log.operation === 'CREATE'
+                        ? copy.create
+                        : log.operation === 'UPDATE'
+                        ? copy.update
+                        : copy.delete}
                     </Badge>
                   </TableCell>
                   <TableCell className="font-mono text-xs text-neutral-300">
-                    Admin User #{log.changedBy}
+                    {copy.adminUser(log.changedBy)}
                   </TableCell>
                   <TableCell className="text-xs text-neutral-400">
-                    {log.reason || 'Standard system action via dashboard/API'}
+                    {log.reason || copy.fallbackReason}
                   </TableCell>
                 </TableRow>
               ))
