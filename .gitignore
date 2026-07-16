@@ -30,10 +30,9 @@ out/
 .vercel/
 
 # ── Prisma ────────────────────────────────────────────────────────────────────
-# Keep schema.prisma, seed, and migrations (migrations must be committed so
-# `prisma migrate deploy` can run in CI/production).
-!prisma/schema.prisma
-!prisma/seed.ts
+# Prisma lives under backend/prisma. schema, seed, and migrations are all
+# committed (migrations must be committed so `prisma migrate deploy` runs in
+# CI/production); the generated client under node_modules stays ignored.
 
 # ── Test & Coverage ───────────────────────────────────────────────────────────
 coverage/

@@ -80,14 +80,14 @@ export class DashboardService {
 
     // All attendance results in the window, with department + meal allowance.
     const results = await this.prisma.attendanceResult.findMany({
-      where: { attendanceDate: { gte: startDate, lte: endDate } },
+      where: { date: { gte: startDate, lte: endDate } },
       select: {
-        attendanceDate: true,
+        date: true,
         workingSeconds: true,
         lateSeconds: true,
         otSeconds: true,
-        absent: true,
-        mealAllowance: { select: { amount: true } },
+        isAbsent: true,
+        mealAllowance: true,
         employee: {
           select: {
             id: true,
@@ -114,14 +114,14 @@ export class DashboardService {
     const trendMap = new Map<string, { lateSeconds: number; lateCount: number; otSeconds: number }>();
 
     for (const r of results) {
-      const meal = r.mealAllowance ? Number(r.mealAllowance.amount) : 0;
+      const meal = Number(r.mealAllowance ?? 0);
       const isLate = r.lateSeconds > 0;
 
       kpis.workingHours += r.workingSeconds;
       kpis.otHours += r.otSeconds;
       kpis.mealTotal += meal;
       if (isLate) kpis.lateCount += 1;
-      if (r.absent) kpis.absentDays += 1;
+      if (r.isAbsent) kpis.absentDays += 1;
 
       const deptName = r.employee.department?.name ?? 'Unassigned';
       let dept = deptMap.get(deptName);
@@ -135,7 +135,7 @@ export class DashboardService {
       dept.mealTotal += meal;
       if (isLate) dept.lateCount += 1;
 
-      const key = this.toDateKey(r.attendanceDate);
+      const key = this.toDateKey(r.date);
       let t = trendMap.get(key);
       if (!t) {
         t = { lateSeconds: 0, lateCount: 0, otSeconds: 0 };

@@ -14,8 +14,8 @@
  * NOTHING is hard-coded in this class.
  */
 
-import { Injectable, Logger } from '@nestjs/common';
-import { IRuleEngineService } from '../../rules/rule-engine.service';
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { IRuleEngineService, RuleEngineService } from '../../rules/rule-engine.service';
 
 // ---------------------------------------------------------------------------
 // Result type
@@ -40,7 +40,9 @@ export interface OtPayResult {
 export class OtCalculator {
   private readonly logger = new Logger(OtCalculator.name);
 
-  constructor(private readonly ruleEngine: IRuleEngineService) {}
+  constructor(
+    @Inject(RuleEngineService) private readonly ruleEngine: IRuleEngineService,
+  ) {}
 
   /**
    * Computes the overtime pay for a given number of OT seconds.

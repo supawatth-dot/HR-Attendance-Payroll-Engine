@@ -1,10 +1,15 @@
 -- CreateTable
 CREATE TABLE "Employee" (
     "id" SERIAL NOT NULL,
+    "employeeCode" TEXT NOT NULL,
+    "email" TEXT,
     "firstName" TEXT NOT NULL,
     "lastName" TEXT NOT NULL,
     "departmentId" INTEGER NOT NULL,
     "shiftId" INTEGER NOT NULL,
+    "baseSalary" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "dailyRate" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
     "hireDate" TIMESTAMP(3) NOT NULL,
     "terminationDate" TIMESTAMP(3),
 
@@ -60,8 +65,9 @@ CREATE TABLE "AttendanceRaw" (
     "employeeId" INTEGER NOT NULL,
     "clockIn" TIMESTAMP(3),
     "clockOut" TIMESTAMP(3),
+    "date" TIMESTAMP(3) NOT NULL,
     "sourceFile" TEXT,
-    "importBatchId" INTEGER NOT NULL,
+    "importLogId" INTEGER NOT NULL,
 
     CONSTRAINT "AttendanceRaw_pkey" PRIMARY KEY ("id")
 );
@@ -70,36 +76,19 @@ CREATE TABLE "AttendanceRaw" (
 CREATE TABLE "AttendanceResult" (
     "id" SERIAL NOT NULL,
     "employeeId" INTEGER NOT NULL,
-    "attendanceDate" TIMESTAMP(3) NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL,
     "workingSeconds" INTEGER NOT NULL,
     "lateSeconds" INTEGER NOT NULL,
     "earlyOutSeconds" INTEGER NOT NULL,
     "otSeconds" INTEGER NOT NULL,
-    "absent" BOOLEAN NOT NULL,
+    "isAbsent" BOOLEAN NOT NULL,
     "missingClock" BOOLEAN NOT NULL,
-    "ruleVersionId" INTEGER NOT NULL,
+    "mealAllowance" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "ruleVersionId" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "AttendanceResult_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "MealAllowanceResult" (
-    "id" SERIAL NOT NULL,
-    "attendanceResultId" INTEGER NOT NULL,
-    "amount" DECIMAL(65,30) NOT NULL,
-    "ruleVersionId" INTEGER NOT NULL,
-
-    CONSTRAINT "MealAllowanceResult_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "DiligenceResult" (
-    "id" SERIAL NOT NULL,
-    "attendanceResultId" INTEGER NOT NULL,
-    "amount" DECIMAL(65,30) NOT NULL,
-    "ruleVersionId" INTEGER NOT NULL,
-
-    CONSTRAINT "DiligenceResult_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -107,8 +96,14 @@ CREATE TABLE "PayrollBatch" (
     "id" SERIAL NOT NULL,
     "periodStart" TIMESTAMP(3) NOT NULL,
     "periodEnd" TIMESTAMP(3) NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "status" TEXT NOT NULL,
+    "createdById" INTEGER,
+    "itemCount" INTEGER NOT NULL DEFAULT 0,
+    "totalGross" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalNet" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "processedAt" TIMESTAMP(3),
 
     CONSTRAINT "PayrollBatch_pkey" PRIMARY KEY ("id")
 );
@@ -116,12 +111,21 @@ CREATE TABLE "PayrollBatch" (
 -- CreateTable
 CREATE TABLE "PayrollItem" (
     "id" SERIAL NOT NULL,
-    "payrollBatchId" INTEGER NOT NULL,
+    "batchId" INTEGER NOT NULL,
     "employeeId" INTEGER NOT NULL,
-    "grossAmount" DECIMAL(65,30) NOT NULL,
-    "deductions" DECIMAL(65,30) NOT NULL,
-    "netAmount" DECIMAL(65,30) NOT NULL,
-    "generatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "baseSalary" DOUBLE PRECISION NOT NULL,
+    "totalWorkingSeconds" INTEGER NOT NULL DEFAULT 0,
+    "totalOtSeconds" INTEGER NOT NULL DEFAULT 0,
+    "totalMealAllowance" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "diligenceAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "otPay" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "grossPay" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "socialSecurityDeduction" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "incomeTaxDeduction" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalDeductions" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "netPay" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "PayrollItem_pkey" PRIMARY KEY ("id")
 );
@@ -130,9 +134,16 @@ CREATE TABLE "PayrollItem" (
 CREATE TABLE "ImportLog" (
     "id" SERIAL NOT NULL,
     "fileName" TEXT NOT NULL,
-    "uploadedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "fileSize" INTEGER,
+    "uploadedById" INTEGER,
     "status" TEXT NOT NULL,
-    "errorReport" TEXT,
+    "totalRows" INTEGER NOT NULL DEFAULT 0,
+    "validRows" INTEGER NOT NULL DEFAULT 0,
+    "errorRows" INTEGER NOT NULL DEFAULT 0,
+    "errorReport" JSONB,
+    "uploadedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "processedAt" TIMESTAMP(3),
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "ImportLog_pkey" PRIMARY KEY ("id")
 );
@@ -165,6 +176,7 @@ CREATE TABLE "RuleDefinition" (
     "id" SERIAL NOT NULL,
     "categoryId" INTEGER NOT NULL,
     "name" TEXT NOT NULL,
+    "code" TEXT,
     "description" TEXT,
     "formulaTemplate" TEXT,
     "effectiveDate" TIMESTAMP(3) NOT NULL,
@@ -180,6 +192,8 @@ CREATE TABLE "RuleVersion" (
     "versionNumber" INTEGER NOT NULL,
     "effectiveFrom" TIMESTAMP(3) NOT NULL,
     "effectiveTo" TIMESTAMP(3),
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "value" JSONB,
 
     CONSTRAINT "RuleVersion_pkey" PRIMARY KEY ("id")
 );
@@ -204,13 +218,22 @@ CREATE TABLE "CompanySetting" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Employee_employeeCode_key" ON "Employee"("employeeCode");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Employee_email_key" ON "Employee"("email");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Holiday_date_key" ON "Holiday"("date");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "MealAllowanceResult_attendanceResultId_key" ON "MealAllowanceResult"("attendanceResultId");
+CREATE UNIQUE INDEX "AttendanceResult_employeeId_date_key" ON "AttendanceResult"("employeeId", "date");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "DiligenceResult_attendanceResultId_key" ON "DiligenceResult"("attendanceResultId");
+CREATE UNIQUE INDEX "PayrollBatch_periodStart_periodEnd_key" ON "PayrollBatch"("periodStart", "periodEnd");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PayrollItem_batchId_employeeId_key" ON "PayrollItem"("batchId", "employeeId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "RuleCategory_name_key" ON "RuleCategory"("name");
@@ -228,28 +251,16 @@ ALTER TABLE "Leave" ADD CONSTRAINT "Leave_employeeId_fkey" FOREIGN KEY ("employe
 ALTER TABLE "AttendanceRaw" ADD CONSTRAINT "AttendanceRaw_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "AttendanceRaw" ADD CONSTRAINT "AttendanceRaw_importBatchId_fkey" FOREIGN KEY ("importBatchId") REFERENCES "ImportLog"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "AttendanceRaw" ADD CONSTRAINT "AttendanceRaw_importLogId_fkey" FOREIGN KEY ("importLogId") REFERENCES "ImportLog"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AttendanceResult" ADD CONSTRAINT "AttendanceResult_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "AttendanceResult" ADD CONSTRAINT "AttendanceResult_ruleVersionId_fkey" FOREIGN KEY ("ruleVersionId") REFERENCES "RuleVersion"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "AttendanceResult" ADD CONSTRAINT "AttendanceResult_ruleVersionId_fkey" FOREIGN KEY ("ruleVersionId") REFERENCES "RuleVersion"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "MealAllowanceResult" ADD CONSTRAINT "MealAllowanceResult_attendanceResultId_fkey" FOREIGN KEY ("attendanceResultId") REFERENCES "AttendanceResult"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "MealAllowanceResult" ADD CONSTRAINT "MealAllowanceResult_ruleVersionId_fkey" FOREIGN KEY ("ruleVersionId") REFERENCES "RuleVersion"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "DiligenceResult" ADD CONSTRAINT "DiligenceResult_attendanceResultId_fkey" FOREIGN KEY ("attendanceResultId") REFERENCES "AttendanceResult"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "DiligenceResult" ADD CONSTRAINT "DiligenceResult_ruleVersionId_fkey" FOREIGN KEY ("ruleVersionId") REFERENCES "RuleVersion"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "PayrollItem" ADD CONSTRAINT "PayrollItem_payrollBatchId_fkey" FOREIGN KEY ("payrollBatchId") REFERENCES "PayrollBatch"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "PayrollItem" ADD CONSTRAINT "PayrollItem_batchId_fkey" FOREIGN KEY ("batchId") REFERENCES "PayrollBatch"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "PayrollItem" ADD CONSTRAINT "PayrollItem_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

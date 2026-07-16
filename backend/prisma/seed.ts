@@ -46,6 +46,7 @@ async function main() {
         data: {
           categoryId,
           name: defData.name,
+          code: defData.key,
           description: defData.description,
           effectiveDate: new Date('2026-01-01T00:00:00Z'),
         },
@@ -62,6 +63,10 @@ async function main() {
           versionNumber: 1,
           effectiveFrom: new Date('2026-01-01T00:00:00Z'),
           effectiveTo: null,
+          isActive: true,
+          // rule-engine reads the denormalised JSON value on the version…
+          value: defData.value,
+          // …while the rules admin API reads the normalised RuleValue rows.
           values: {
             create: [
               { key: defData.key, value: defData.value, valueType: defData.type },
@@ -96,10 +101,15 @@ async function main() {
     where: { id: 1 },
     update: {},
     create: {
+      employeeCode: 'EMP-0001',
+      email: 'admin@hr.local',
       firstName: 'System',
       lastName: 'Administrator',
       departmentId: department.id,
       shiftId: shift.id,
+      baseSalary: 60000,
+      dailyRate: 2000,
+      isActive: true,
       hireDate: new Date('2026-01-01T00:00:00Z'),
     },
   });
@@ -153,12 +163,18 @@ async function main() {
     const employees: { id: number; departmentId: number }[] = [];
     for (let i = 0; i < 20; i++) {
       const dept = pick(departments);
+      const code = `EMP-${String(1000 + i).padStart(4, '0')}`;
       const emp = await prisma.employee.create({
         data: {
+          employeeCode: code,
+          email: `${firstNames[i % firstNames.length].toLowerCase()}.${i}@hr.local`,
           firstName: firstNames[i % firstNames.length],
           lastName: pick(lastNames),
           departmentId: dept.id,
           shiftId: shift.id,
+          baseSalary: 18000 + Math.floor(rand() * 12) * 1000,
+          dailyRate: 600 + Math.floor(rand() * 8) * 50,
+          isActive: true,
           hireDate: new Date('2026-01-01T00:00:00Z'),
         },
       });
@@ -208,32 +224,27 @@ async function main() {
         const workingSeconds = absent ? 0 : 8 * 3600 + otSeconds;
         const earlyOutSeconds = 0;
 
-        const result = await prisma.attendanceResult.create({
+        // Meal allowance: present, worked >= 4h, and not more than 30m late.
+        const eligibleForMeal =
+          !absent && workingSeconds >= 4 * 3600 && lateSeconds <= 30 * 60;
+        const mealAllowance = eligibleForMeal ? MEAL_RATE : 0;
+
+        await prisma.attendanceResult.create({
           data: {
             employeeId: emp.id,
-            attendanceDate: date,
+            date,
             workingSeconds,
             lateSeconds,
             earlyOutSeconds,
             otSeconds,
-            absent,
+            isAbsent: absent,
             missingClock,
+            mealAllowance,
             ruleVersionId,
           },
         });
         resultCount++;
-
-        // Meal allowance: present, worked >= 4h, and not more than 30m late.
-        if (!absent && workingSeconds >= 4 * 3600 && lateSeconds <= 30 * 60) {
-          await prisma.mealAllowanceResult.create({
-            data: {
-              attendanceResultId: result.id,
-              amount: MEAL_RATE,
-              ruleVersionId,
-            },
-          });
-          mealCount++;
-        }
+        if (eligibleForMeal) mealCount++;
       }
     }
 

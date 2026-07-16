@@ -12,11 +12,10 @@
     "test:cov": "jest --coverage",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
-    "seed": "ts-node ../prisma/seed.ts"
+    "seed": "ts-node prisma/seed.ts"
   },
   "prisma": {
-    "schema": "../prisma/schema.prisma",
-    "seed": "ts-node ../prisma/seed.ts"
+    "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^10.1.0",

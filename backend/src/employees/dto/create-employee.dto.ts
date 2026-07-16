@@ -1,6 +1,14 @@
-import { IsString, IsInt, IsNotEmpty, IsOptional, IsDateString } from 'class-validator';
+import { IsString, IsInt, IsNotEmpty, IsOptional, IsDateString, IsEmail, IsNumber } from 'class-validator';
 
 export class CreateEmployeeDto {
+  @IsString()
+  @IsNotEmpty()
+  employeeCode: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
   @IsString()
   @IsNotEmpty()
   firstName: string;
@@ -16,6 +24,14 @@ export class CreateEmployeeDto {
   @IsInt()
   @IsNotEmpty()
   shiftId: number;
+
+  @IsOptional()
+  @IsNumber()
+  baseSalary?: number;
+
+  @IsOptional()
+  @IsNumber()
+  dailyRate?: number;
 
   @IsDateString()
   @IsNotEmpty()
