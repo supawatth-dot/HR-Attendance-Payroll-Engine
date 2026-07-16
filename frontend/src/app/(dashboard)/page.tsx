@@ -65,25 +65,21 @@ export default function DashboardPage() {
           title="Total Employees"
           value={stats.totalEmployees}
           icon={Users}
-          color="blue"
         />
         <StatCard
           title="Active Shifts"
           value={stats.activeShifts}
           icon={Clock}
-          color="green"
         />
         <StatCard
           title="Missing Clocks"
           value={stats.missingClocks}
           icon={AlertTriangle}
-          color="red"
         />
         <StatCard
           title="Recent Batches"
           value={stats.recentBatches.length}
           icon={DollarSign}
-          color="purple"
         />
       </div>
 

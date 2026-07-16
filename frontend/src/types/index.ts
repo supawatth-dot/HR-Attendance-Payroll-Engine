@@ -2,6 +2,8 @@ export interface Department {
   id: number;
   name: string;
   managerId?: number;
+  code?: string;
+  headCount?: number;
   _count?: { employees: number };
 }
 
@@ -10,20 +12,53 @@ export interface Shift {
   name: string;
   startTime: string;
   endTime: string;
-  lunchBreakMinutes: number;
-  overnight: boolean;
+  lunchBreakMinutes?: number;
+  overnight?: boolean;
+  code?: string;
+  workingHours?: number;
+  graceMinutes?: number;
 }
 
 export interface Employee {
   id: number;
+  employeeCode?: string;
+  email?: string | null;
   firstName: string;
   lastName: string;
+  fullName?: string;
   departmentId: number;
   shiftId: number;
+  baseSalary?: number;
+  dailyRate?: number;
+  isActive?: boolean;
+  position?: string;
+  status?: 'active' | 'inactive' | string;
   hireDate: string;
   terminationDate?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
   department?: Department;
   shift?: Shift;
+}
+
+export interface ImportBatchError {
+  row: number;
+  column: string;
+  value?: string;
+  message: string;
+}
+
+export interface ImportBatchResult {
+  id?: string | number;
+  batchId?: number;
+  filename?: string;
+  status?: string;
+  totalRows: number;
+  successRows: number;
+  errorRows: number;
+  errors: ImportBatchError[];
+  createdAt?: string;
+  completedAt?: string;
 }
 
 export interface AttendanceResultRecord {
