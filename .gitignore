@@ -30,8 +30,8 @@ out/
 .vercel/
 
 # ── Prisma ────────────────────────────────────────────────────────────────────
-# Keep schema.prisma and seed files; ignore generated client and migration lock
-prisma/migrations/
+# Keep schema.prisma, seed, and migrations (migrations must be committed so
+# `prisma migrate deploy` can run in CI/production).
 !prisma/schema.prisma
 !prisma/seed.ts
 

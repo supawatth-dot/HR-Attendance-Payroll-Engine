@@ -104,6 +104,144 @@ async function main() {
     },
   });
 
+  // -------------------------------------------------------------------------
+  // 5. Seed a realistic demo dataset (departments, employees, attendance)
+  //    so dashboards have non-zero data. Skipped once data already exists so
+  //    the seed stays safe to re-run.
+  // -------------------------------------------------------------------------
+  const existingResults = await prisma.attendanceResult.count();
+  if (existingResults > 0) {
+    console.log(
+      `ℹ️  ${existingResults} attendance result(s) already present – skipping demo data generation.`,
+    );
+  } else {
+    // A rule version is required on every AttendanceResult (FK). Any active
+    // version works for demo purposes; pick the first one that was seeded.
+    const ruleVersion = await prisma.ruleVersion.findFirst({
+      orderBy: { id: 'asc' },
+    });
+    if (!ruleVersion) throw new Error('No rule version seeded – cannot attach results.');
+    const ruleVersionId = ruleVersion.id;
+
+    // Deterministic PRNG so the dataset is identical on every fresh seed.
+    let rngState = 20260601;
+    const rand = () => {
+      rngState = (rngState * 1103515245 + 12345) & 0x7fffffff;
+      return rngState / 0x7fffffff;
+    };
+    const pick = <T>(arr: T[]) => arr[Math.floor(rand() * arr.length)];
+
+    // Departments beyond the seeded "Executive & Admin Hierarchy".
+    const deptNames = [
+      'Workshop',
+      'Warehouse',
+      'Service',
+      'FI & CO',
+      'Human Resources',
+      'IT Support',
+    ];
+    const departments = [department];
+    for (const name of deptNames) {
+      departments.push(await prisma.department.create({ data: { name } }));
+    }
+
+    // Employees spread across departments.
+    const firstNames = ['Somchai', 'Suda', 'Anan', 'Nid', 'Wichai', 'Pim', 'Krit', 'Ploy', 'Nattapong', 'Rungtiwa', 'Chai', 'Mai', 'Thanawat', 'Kanya', 'Peerapong', 'Siriporn', 'Decha', 'Waraporn', 'Adisak', 'Benjawan'];
+    const lastNames = ['Srisai', 'Wongchai', 'Thongdee', 'Prasert', 'Chaiyaporn', 'Boonmee', 'Sukjai', 'Rattana', 'Panya', 'Meesuk'];
+
+    const MEAL_RATE = 25;
+    const employees: { id: number; departmentId: number }[] = [];
+    for (let i = 0; i < 20; i++) {
+      const dept = pick(departments);
+      const emp = await prisma.employee.create({
+        data: {
+          firstName: firstNames[i % firstNames.length],
+          lastName: pick(lastNames),
+          departmentId: dept.id,
+          shiftId: shift.id,
+          hireDate: new Date('2026-01-01T00:00:00Z'),
+        },
+      });
+      employees.push({ id: emp.id, departmentId: dept.id });
+    }
+
+    // Weekdays of June 2026 (working days).
+    const workdays: Date[] = [];
+    for (let d = 1; d <= 30; d++) {
+      const date = new Date(Date.UTC(2026, 5, d));
+      const dow = date.getUTCDay();
+      if (dow !== 0 && dow !== 6) workdays.push(date);
+    }
+
+    let resultCount = 0;
+    let mealCount = 0;
+    let leaveCount = 0;
+
+    for (const emp of employees) {
+      for (const date of workdays) {
+        const roll = rand();
+
+        // ~4% of days recorded as leave rather than an attendance result.
+        if (roll < 0.04) {
+          await prisma.leave.create({
+            data: {
+              employeeId: emp.id,
+              startDate: date,
+              endDate: date,
+              type: pick(['ANNUAL', 'SICK', 'PERSONAL']),
+              approvedBy: 1,
+            },
+          });
+          leaveCount++;
+          continue;
+        }
+
+        // ~3% absent (no clock records at all).
+        const absent = roll >= 0.04 && roll < 0.07;
+        const missingClock = absent;
+        // ~12% late arrival.
+        const isLate = !absent && rand() < 0.12;
+        const lateSeconds = isLate ? (5 + Math.floor(rand() * 40)) * 60 : 0;
+        // Base 8h day, occasionally with overtime.
+        const otMinutes = !absent && rand() < 0.25 ? 30 + Math.floor(rand() * 120) : 0;
+        const otSeconds = otMinutes * 60;
+        const workingSeconds = absent ? 0 : 8 * 3600 + otSeconds;
+        const earlyOutSeconds = 0;
+
+        const result = await prisma.attendanceResult.create({
+          data: {
+            employeeId: emp.id,
+            attendanceDate: date,
+            workingSeconds,
+            lateSeconds,
+            earlyOutSeconds,
+            otSeconds,
+            absent,
+            missingClock,
+            ruleVersionId,
+          },
+        });
+        resultCount++;
+
+        // Meal allowance: present, worked >= 4h, and not more than 30m late.
+        if (!absent && workingSeconds >= 4 * 3600 && lateSeconds <= 30 * 60) {
+          await prisma.mealAllowanceResult.create({
+            data: {
+              attendanceResultId: result.id,
+              amount: MEAL_RATE,
+              ruleVersionId,
+            },
+          });
+          mealCount++;
+        }
+      }
+    }
+
+    console.log(
+      `✅ Demo data: ${employees.length} employees, ${resultCount} attendance results, ${mealCount} meal allowances, ${leaveCount} leaves.`,
+    );
+  }
+
   console.log('✅ Seed completed successfully!');
   console.log(`Initial Admin Employee ID: ${employee.id} (${employee.firstName} ${employee.lastName})`);
 }

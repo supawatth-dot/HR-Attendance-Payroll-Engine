@@ -18,6 +18,8 @@ model Employee {
   department       Department @relation(fields: [departmentId], references: [id])
   shift            Shift      @relation(fields: [shiftId], references: [id])
   attendances      AttendanceResult[]
+  attendanceRaws   AttendanceRaw[]
+  payrollItems     PayrollItem[]
   leaves           Leave[]
 }
 
@@ -85,7 +87,7 @@ model AttendanceResult {
 
 model MealAllowanceResult {
   id                 Int @id @default(autoincrement())
-  attendanceResultId Int
+  attendanceResultId Int @unique
   attendanceResult   AttendanceResult @relation(fields: [attendanceResultId], references: [id])
   amount             Decimal
   ruleVersionId      Int
@@ -94,7 +96,7 @@ model MealAllowanceResult {
 
 model DiligenceResult {
   id                 Int @id @default(autoincrement())
-  attendanceResultId Int
+  attendanceResultId Int @unique
   attendanceResult   AttendanceResult @relation(fields: [attendanceResultId], references: [id])
   amount             Decimal
   ruleVersionId      Int
@@ -169,6 +171,9 @@ model RuleVersion {
   effectiveFrom DateTime
   effectiveTo   DateTime?
   values        RuleValue[]
+  attendanceResults    AttendanceResult[]
+  mealAllowanceResults MealAllowanceResult[]
+  diligenceResults     DiligenceResult[]
 }
 
 model RuleValue {

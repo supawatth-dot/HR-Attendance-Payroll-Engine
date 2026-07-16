@@ -118,3 +118,30 @@ export async function getAuditLogs(params?: any) {
   const res = await api.get('/audit', { params });
   return res.data;
 }
+
+export interface OverviewResponse {
+  range: { startDate: string; endDate: string };
+  kpis: {
+    employees: number;
+    leaveDays: number;
+    lateCount: number;
+    workingHours: number;
+    otHours: number;
+    mealTotal: number;
+    absentDays: number;
+  };
+  byDepartment: {
+    department: string;
+    employees: number;
+    workingHours: number;
+    otHours: number;
+    lateCount: number;
+    mealTotal: number;
+  }[];
+  trend: { date: string; lateCount: number; otHours: number }[];
+}
+
+export async function getOverview(startDate?: string, endDate?: string): Promise<OverviewResponse> {
+  const res = await api.get('/dashboard/overview', { params: { startDate, endDate } });
+  return res.data;
+}

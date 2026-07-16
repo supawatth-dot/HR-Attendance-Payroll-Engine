@@ -14,6 +14,7 @@ import { RulesModule } from './rules/rules.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { ImportModule } from './import/import.module';
 import { PayrollModule } from './payroll/payroll.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 /**
  * Root application module.
@@ -64,6 +65,7 @@ import { PayrollModule } from './payroll/payroll.module';
     AttendanceModule,      // Raw check-in/out events + processed results
     ImportModule,          // Bulk data import (CSV / Excel via BullMQ)
     PayrollModule,         // Payroll calculation and payslip generation
+    DashboardModule,       // Read-only Overview aggregates
   ],
 })
 export class AppModule {}
